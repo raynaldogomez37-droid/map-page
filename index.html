@@ -3,13 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>修仙游戏（原生fetch版本）</title>
+    <title>修仙游戏（最终稳定版）</title>
     <style>
         * {box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui}
         body {background: #1a1a2e; color: #eee; padding: 16px; max-width: 600px; margin: 0 auto}
         .box {background: #27293d; padding: 18px; border-radius: 12px; margin-bottom: 14px}
         input {width: 100%; padding: 10px; margin: 8px 0; border-radius: 6px; border: none; background: #383b54; color: #fff; font-size: 16px}
         button {width: 100%; padding: 11px; margin: 6px 0; border: none; border-radius: 8px; background: #4361ee; color: #fff; font-size: 16px}
+        button:disabled {background: #666; cursor: not-allowed; opacity:0.7}
         button.danger {background: #e63946}
         button.gold {background: #f77f00}
         .hide {display: none}
@@ -18,6 +19,8 @@
         .rarity-rare {border-left: 4px solid #4cc9f0}
         .rarity-epic {border-left: 4px solid #7209b7}
         .rarity-legend {border-left: 4px solid #f77f00}
+        .tip {color:#999; margin:8px 0}
+        .error {color:#ff4444}
     </style>
 </head>
 <body>
@@ -25,6 +28,7 @@
     <h2>修仙账号</h2>
     <input id="uname" placeholder="用户名">
     <input id="pwd" type="password" placeholder="密码">
+    <div class="tip" id="authTip"></div>
     <button id="btnRegister">注册账号</button>
     <button id="btnLogin">登录账号</button>
 </div>
@@ -38,11 +42,13 @@
     </div>
     <div class="box">
         <h3>秘境抽装备（消耗10金币）</h3>
+        <div class="tip" id="drawTip"></div>
         <button class="gold" id="btnDraw">开始抽装备</button>
         <div id="drawResult"></div>
     </div>
     <div class="box">
         <h3>我的背包</h3>
+        <div class="tip" id="bagTip"></div>
         <button id="btnLoadBag">刷新背包</button>
         <div id="bagList"></div>
     </div>
@@ -62,8 +68,12 @@ const btnDraw = document.getElementById('btnDraw');
 const drawResult = document.getElementById('drawResult');
 const btnLoadBag = document.getElementById('btnLoadBag');
 const bagList = document.getElementById('bagList');
+const authTip = document.getElementById('authTip');
+const drawTip = document.getElementById('drawTip');
+const bagTip = document.getElementById('bagTip');
 
 let myUserId = localStorage.getItem("game_user_id") || null;
+let isLoading = false;
 
 (async function init(){
     if(myUserId){
@@ -71,45 +81,78 @@ let myUserId = localStorage.getItem("game_user_id") || null;
     }
 })();
 
+// 注册
 document.getElementById("btnRegister").onclick = async function(){
+    if(isLoading){authTip.innerText="正在注册，请稍候...";return;}
     const username = unameEl.value.trim();
     const password = pwdEl.value.trim();
-    if(!username||!password){alert("填写用户名密码");return;}
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/accounts`,{
-        method:"POST",
-        headers:{
-            "apikey":SUPABASE_ANON_KEY,
-            "Content-Type":"application/json",
-            "Prefer":"return=representation"
-        },
-        body:JSON.stringify([{username,password}])
-    });
-    const data = await res.json();
-    if(res.ok){
-        alert("注册成功，请登录");
-    }else{
-        alert("注册失败："+JSON.stringify(data));
+    if(!username||!password){authTip.innerText="请填写用户名密码";return;}
+    isLoading = true;
+    authTip.innerText="正在注册中...";
+    this.disabled = true;
+    try{
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/accounts`,{
+            method:"POST",
+            headers:{
+                "apikey":SUPABASE_ANON_KEY,
+                "Content-Type":"application/json",
+                "Prefer":"return=representation"
+            },
+            body:JSON.stringify([{username,password}])
+        });
+        const data = await res.json();
+        if(res.ok){
+            authTip.innerText="注册成功，请登录";
+        }else{
+            authTip.innerText="注册失败："+JSON.stringify(data);
+            authTip.classList.add("error");
+        }
+    }catch(err){
+        authTip.innerText="网络异常，请重试";
+        authTip.classList.add("error");
+    }finally{
+        isLoading = false;
+        this.disabled = false;
+        authTip.classList.remove("error");
     }
 }
 
+// 登录
 document.getElementById("btnLogin").onclick = async function(){
+    if(isLoading){authTip.innerText="正在登录，请稍候...";return;}
     const username = unameEl.value.trim();
     const password = pwdEl.value.trim();
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/accounts?username=eq.${encodeURIComponent(username)}&password=eq.${encodeURIComponent(password)}`,{
-        method:"GET",
-        headers:{"apikey":SUPABASE_ANON_KEY}
-    });
-    const arr = await res.json();
-    if(arr.length===0){
-        alert("用户名或密码错误");
-        return;
+    if(!username||!password){authTip.innerText="请填写用户名密码";return;}
+    isLoading = true;
+    authTip.innerText="正在登录中...";
+    this.disabled = true;
+    try{
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/accounts?username=eq.${encodeURIComponent(username)}&password=eq.${encodeURIComponent(password)}`,{
+            method:"GET",
+            headers:{"apikey":SUPABASE_ANON_KEY}
+        });
+        const arr = await res.json();
+        if(arr.length===0){
+            authTip.innerText="用户名或密码错误";
+            authTip.classList.add("error");
+            return;
+        }
+        const user = arr[0];
+        myUserId = user.id;
+        localStorage.setItem("game_user_id",myUserId);
+        await enterGame(myUserId);
+        authTip.innerText="";
+    }catch(err){
+        authTip.innerText="网络异常，请重试";
+        authTip.classList.add("error");
+    }finally{
+        isLoading = false;
+        this.disabled = false;
+        authTip.classList.remove("error");
     }
-    const user = arr[0];
-    myUserId = user.id;
-    localStorage.setItem("game_user_id",myUserId);
-    await enterGame(myUserId);
 }
 
+// 退出登录
 document.getElementById("btnLogout").onclick = function(){
     myUserId = null;
     localStorage.removeItem("game_user_id");
@@ -117,101 +160,154 @@ document.getElementById("btnLogout").onclick = function(){
     gamePage.classList.add("hide");
 }
 
+// 进入游戏初始化
 async function enterGame(accountId){
     authPage.classList.add("hide");
     gamePage.classList.remove("hide");
-    let res = await fetch(`${SUPABASE_URL}/rest/v1/users?id=eq.${encodeURIComponent(accountId)}`,{
-        headers:{"apikey":SUPABASE_ANON_KEY}
-    });
-    let playerArr = await res.json();
-    let player;
-    if(playerArr.length===0){
-        const randName = "修仙者"+Math.floor(Math.random()*99999);
-        await fetch(`${SUPABASE_URL}/rest/v1/users`,{
+    bagTip.innerText="正在加载角色数据...";
+    try{
+        let res = await fetch(`${SUPABASE_URL}/rest/v1/users?id=eq.${encodeURIComponent(accountId)}`,{
+            headers:{"apikey":SUPABASE_ANON_KEY}
+        });
+        let playerArr = await res.json();
+        let player;
+        if(playerArr.length===0){
+            const randName = "修仙者"+Math.floor(Math.random()*99999);
+            await fetch(`${SUPABASE_URL}/rest/v1/users`,{
+                method:"POST",
+                headers:{
+                    "apikey":SUPABASE_ANON_KEY,
+                    "Content-Type":"application/json",
+                    "Prefer":"return=representation"
+                },
+                body:JSON.stringify([{id:accountId,name:randName,gold:100}])
+            })
+            player = {name:randName,gold:100};
+        }else{
+            player = playerArr[0];
+        }
+        roleNameEl.innerText = player.name;
+        goldNumEl.innerText = player.gold;
+        await loadBag(accountId);
+    }catch(err){
+        bagTip.innerText="加载角色失败";
+        bagTip.classList.add("error");
+        console.error("角色加载错误",err);
+    }
+}
+
+// 抽卡核心逻辑（修复装备写入问题）
+btnDraw.onclick = async function(){
+    if(isLoading){drawTip.innerText="正在抽卡，请稍候...";return;}
+    if(!myUserId){drawTip.innerText="请先登录";return;}
+    isLoading = true;
+    drawTip.innerText="扣金币，抽取装备中...";
+    this.disabled = true;
+    try{
+        // 读取当前金币
+        let r1 = await fetch(`${SUPABASE_URL}/rest/v1/users?id=eq.${encodeURIComponent(myUserId)}`,{headers:{"apikey":SUPABASE_ANON_KEY}});
+        let pArr = await r1.json();
+        let p = pArr[0];
+        if(p.gold <10){
+            drawResult.innerHTML="<p>金币不足！</p>";
+            return;
+        }
+        // 扣除金币
+        await fetch(`${SUPABASE_URL}/rest/v1/users?id=eq.${encodeURIComponent(myUserId)}`,{
+            method:"PATCH",
+            headers:{
+                "apikey":SUPABASE_ANON_KEY,
+                "Content-Type":"application/json"
+            },
+            body:JSON.stringify({gold:p.gold-10})
+        })
+        // 随机装备
+        const rnd = Math.random();
+        let item,rarityClass;
+        if(rnd<0.5){
+            item = {item_name:"普通铁剑",item_data:{lv:1,atk:5},rarity:"common",user_id:myUserId};
+            rarityClass="rarity-common";
+        }else if(rnd<0.8){
+            item = {item_name:"灵木法杖",item_data:{lv:2,atk:12},rarity:"rare",user_id:myUserId};
+            rarityClass="rarity-rare";
+        }else if(rnd<0.95){
+            item = {item_name:"紫电宝甲",item_data:{lv:3,def:20},rarity:"epic",user_id:myUserId};
+            rarityClass="rarity-epic";
+        }else{
+            item = {item_name:"九霄仙剑",item_data:{lv:5,atk:55},rarity:"legend",user_id:myUserId};
+            rarityClass="rarity-legend";
+        }
+        // 写入装备到数据库（关键修复）
+        const insertRes = await fetch(`${SUPABASE_URL}/rest/v1/items`,{
             method:"POST",
             headers:{
                 "apikey":SUPABASE_ANON_KEY,
-                "Content-Type":"application/json",
-                "Prefer":"return=representation"
+                "Content-Type":"application/json"
             },
-            body:JSON.stringify([{id:accountId,name:randName,gold:100}])
-        })
-        player = {name:randName,gold:100};
-    }else{
-        player = playerArr[0];
+            body:JSON.stringify([item])
+        });
+        const insertData = await insertRes.json();
+        if(!insertRes.ok){
+            throw new Error("装备写入失败："+JSON.stringify(insertData));
+        }
+        drawResult.innerHTML = `<div class="item-card ${rarityClass}"><p>抽到：${item.item_name}</p></div>`;
+        goldNumEl.innerText = p.gold-10;
+        // 刷新背包
+        await loadBag(myUserId);
+    }catch(err){
+        drawTip.innerText="抽卡异常："+err.message;
+        drawTip.classList.add("error");
+        console.error("抽卡错误",err);
+    }finally{
+        isLoading = false;
+        this.disabled = false;
+        drawTip.classList.remove("error");
     }
-    roleNameEl.innerText = player.name;
-    goldNumEl.innerText = player.gold;
-    await loadBag(accountId);
 }
 
-btnDraw.onclick = async function(){
-    if(!myUserId){alert("请登录");return;}
-    let r1 = await fetch(`${SUPABASE_URL}/rest/v1/users?id=eq.${encodeURIComponent(myUserId)}`,{headers:{"apikey":SUPABASE_ANON_KEY}});
-    let pArr = await r1.json();
-    let p = pArr[0];
-    if(p.gold <10){
-        drawResult.innerHTML="<p>金币不足！</p>";
-        return;
-    }
-    await fetch(`${SUPABASE_URL}/rest/v1/users?id=eq.${encodeURIComponent(myUserId)}`,{
-        method:"PATCH",
-        headers:{
-            "apikey":SUPABASE_ANON_KEY,
-            "Content-Type":"application/json"
-        },
-        body:JSON.stringify({gold:p.gold-10})
-    })
-    const rnd = Math.random();
-    let item,rarityClass;
-    if(rnd<0.5){
-        item = {item_name:"普通铁剑",item_data:{lv:1,atk:5},rarity:"common",user_id:myUserId};
-        rarityClass="rarity-common";
-    }else if(rnd<0.8){
-        item = {item_name:"灵木法杖",item_data:{lv:2,atk:12},rarity:"rare",user_id:myUserId};
-        rarityClass="rarity-rare";
-    }else if(rnd<0.95){
-        item = {item_name:"紫电宝甲",item_data:{lv:3,def:20},rarity:"epic",user_id:myUserId};
-        rarityClass="rarity-epic";
-    }else{
-        item = {item_name:"九霄仙剑",item_data:{lv:5,atk:55},rarity:"legend",user_id:myUserId};
-        rarityClass="rarity-legend";
-    }
-    await fetch(`${SUPABASE_URL}/rest/v1/items`,{
-        method:"POST",
-        headers:{
-            "apikey":SUPABASE_ANON_KEY,
-            "Content-Type":"application/json"
-        },
-        body:JSON.stringify([item])
-    })
-    drawResult.innerHTML = `<div class="item-card ${rarityClass}"><p>抽到：${item.item_name}</p></div>`;
-    goldNumEl.innerText = p.gold-10;
-    await loadBag(myUserId);
-}
-
+// 加载背包
 async function loadBag(uid){
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/items?user_id=eq.${encodeURIComponent(uid)}&order=created_at.desc`,{
-        headers:{"apikey":SUPABASE_ANON_KEY}
-    });
-    const bag = await res.json();
+    bagTip.innerText="正在读取背包...";
     bagList.innerHTML = "";
-    if(!bag||bag.length===0){
-        bagList.innerHTML="<p>背包空空如也，快去抽装备</p>";
-        return;
+    try{
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/items?user_id=eq.${encodeURIComponent(uid)}&order=created_at.desc`,{
+            headers:{"apikey":SUPABASE_ANON_KEY}
+        });
+        const bag = await res.json();
+        if(!bag||bag.length===0){
+            bagList.innerHTML="<p>背包空空如也，快去抽装备</p>";
+            bagTip.innerText="背包加载完成";
+            return;
+        }
+        let html = "";
+        bag.forEach(it=>{
+            let cls = "rarity-common";
+            if(it.rarity==="rare")cls="rarity-rare";
+            if(it.rarity==="epic")cls="rarity-epic";
+            if(it.rarity==="legend")cls="rarity-legend";
+            html += `<div class="item-card ${cls}">
+                <div>${it.item_name}</div>
+                <div>等级:${it.item_data.lv} 攻击:${it.item_data.atk||0} 防御:${it.item_data.def||0}</div>
+            </div>`;
+        })
+        bagList.innerHTML = html;
+        bagTip.innerText="背包加载完成";
+    }catch(err){
+        bagTip.innerText="背包加载失败，请点击刷新";
+        bagTip.classList.add("error");
+        console.error("背包加载错误",err);
     }
-    bag.forEach(it=>{
-        let cls = "rarity-common";
-        if(it.rarity==="rare")cls="rarity-rare";
-        if(it.rarity==="epic")cls="rarity-epic";
-        if(it.rarity==="legend")cls="rarity-legend";
-        bagList.innerHTML += `<div class="item-card ${cls}">
-            <div>${it.item_name}</div>
-            <div>等级:${it.item_data.lv} 攻击:${it.item_data.atk||0} 防御:${it.item_data.def||0}</div>
-        </div>`;
-    })
 }
-btnLoadBag.onclick = ()=> loadBag(myUserId);
+
+// 手动刷新背包
+btnLoadBag.onclick = async function(){
+    if(isLoading){bagTip.innerText="正在刷新，请稍候";return;}
+    isLoading = true;
+    this.disabled = true;
+    await loadBag(myUserId);
+    isLoading = false;
+    this.disabled = false;
+}
 </script>
 </body>
 </html>
