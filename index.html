@@ -3,6 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<!-- 禁止浏览器缓存页面，防止旧代码残留 -->
+<meta http-equiv="cache-control" content="no-cache, no-store, must-revalidate" />
+<meta http-equiv="pragma" content="no-cache" />
+<meta http-equiv="expires" content="0" />
 <title>修仙游戏</title>
 <style>
 *{
@@ -43,30 +47,50 @@ html,body{
     font-size:16px;
     display:none;
 }
+/*隐藏跳转a标签*/
+#hiddenLink{
+    display:none;
+}
 </style>
 </head>
 <body>
 <div class="splash-wrap">
     <img class="logo" src="https://cdn.harmony5.cn/square/5c5a222b-2dd3-4ef0-8c7c-bdd10afce405.jpg" alt="游戏logo">
     <div class="tip">正在启动游戏...</div>
-    <button id="manualBtn" class="jump-btn" onclick="goLogin()">点击进入游戏</button>
+    <button id="manualBtn" class="jump-btn">点击进入游戏</button>
+    <a id="hiddenLink" href=""></a>
 </div>
+
 <script>
-// 自动读取当前网站域名，不用手动写死，避免填错域名404
+const manualBtn = document.getElementById('manualBtn');
+const hiddenLink = document.getElementById('hiddenLink');
+
+// 构造正确login地址，URL对象处理，规避字符串替换bug
+function getLoginUrl(){
+    let url = new URL(window.location);
+    url.pathname = "/login.html";
+    // 增加随机时间戳，干掉浏览器缓存劫持跳转
+    url.search = "t="+Date.now();
+    return url.toString();
+}
+
 function goLogin(){
     clearTimeout(timer);
     clearTimeout(showBtnTimer);
-    // origin = 当前网站根域名，拼接页面文件名
-    let target = window.location.origin + window.location.pathname.replace("index.html","login.html");
-    window.location.href = target;
+    let targetUrl = getLoginUrl();
+    hiddenLink.href = targetUrl;
+    // 模拟点击a标签跳转，安卓webview兼容性远高于location.href
+    hiddenLink.click();
 }
+
+manualBtn.onclick = goLogin;
 
 let timer = setTimeout(function(){
     goLogin();
 },5000);
 
 let showBtnTimer = setTimeout(function(){
-    document.getElementById('manualBtn').style.display = 'inline-block';
+    manualBtn.style.display = 'inline-block';
 },8000);
 
 window.onbeforeunload=()=>{
