@@ -1,6 +1,5 @@
 const UiPanel = {
     init(){
-        //底部导航
         document.getElementById("btnBag").onclick = ()=>this.openBag();
         document.getElementById("btnWare").onclick = ()=>this.openWarehouse();
         document.getElementById("btnAttr").onclick = ()=>this.openAttr();
@@ -38,6 +37,7 @@ const UiPanel = {
                     GameData.wearingEquip.push(item);
                     GameData.bag.splice(idx,1);
                     TypingGame.updateTopUi();
+                    TypingGame.save();
                     this.openBag();
                 }
             }
@@ -47,7 +47,6 @@ const UiPanel = {
 
     openChest(bagIndex){
         GameData.bag.splice(bagIndex,1);
-        //宝箱有空概率
         const r = Math.random();
         if(r<0.35){
             alert("宝箱是空的！");
@@ -65,6 +64,7 @@ const UiPanel = {
             GameData.bag.push({type:"equip",...eq});
             alert(`开出装备：${eq.name}`);
         }
+        TypingGame.save();
         this.openBag();
     },
 
@@ -75,7 +75,8 @@ const UiPanel = {
         const listDom = document.getElementById("wareList");
         listDom.innerHTML="";
         GameData.warehouse.forEach((item,idx)=>{
-            const div = document.createElement("item-row");
+            const div = document.createElement("div");
+            div.className="item-row";
             div.innerText = `${item.name} 攻击${item.atk} 血量${item.hp}`;
             listDom.appendChild(div);
         })
@@ -122,5 +123,4 @@ const UiPanel = {
 window.onload = function(){
     TypingGame.init();
     UiPanel.init();
-    TypingGame.updateTopUi();
 }
