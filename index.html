@@ -3,8 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>修仙网页Demo</title>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <title>修仙游戏（原生fetch版本）</title>
     <style>
         * {box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui}
         body {background: #1a1a2e; color: #eee; padding: 16px; max-width: 600px; margin: 0 auto}
@@ -24,8 +23,8 @@
 <body>
 <div id="authPage" class="box">
     <h2>修仙账号</h2>
-    <input id="email" placeholder="邮箱">
-    <input id="pwd" type="password" placeholder="密码(至少6位)">
+    <input id="uname" placeholder="用户名">
+    <input id="pwd" type="password" placeholder="密码">
     <button id="btnRegister">注册账号</button>
     <button id="btnLogin">登录账号</button>
 </div>
@@ -52,12 +51,10 @@
 <script>
 const SUPABASE_URL = "https://akbkupgqscgzokwjnllr.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_rnKCzXAh4OL1DIDIrTUf4A_JLnjfbWr";
-const { createClient } = window.supabase;
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 const authPage = document.getElementById('authPage');
 const gamePage = document.getElementById('gamePage');
-const emailEl = document.getElementById('email');
+const unameEl = document.getElementById('uname');
 const pwdEl = document.getElementById('pwd');
 const roleNameEl = document.getElementById('roleName');
 const goldNumEl = document.getElementById('goldNum');
@@ -66,112 +63,163 @@ const drawResult = document.getElementById('drawResult');
 const btnLoadBag = document.getElementById('btnLoadBag');
 const bagList = document.getElementById('bagList');
 
-supabase.auth.onAuthStateChange(async (event, session) => {
-    console.log("auth事件", event, session);
-    if(session && session.user) {
-        await enterGame(session.user);
-    } else {
-        authPage.classList.remove('hide');
-        gamePage.classList.add('hide');
-    }
-});
+let myUserId = localStorage.getItem("game_user_id") || null;
 
-document.getElementById('btnRegister').onclick = async () => {
-    const email = emailEl.value.trim();
+// 检查本地是否保存登录
+(async function init(){
+    if(myUserId){
+        await enterGame(myUserId);
+    }
+})();
+
+//注册
+document.getElementById("btnRegister").onclick = async function(){
+    const username = unameEl.value.trim();
     const password = pwdEl.value.trim();
-    if(!email || !password) { alert("请填写邮箱密码"); return; }
-    if(password.length < 6) { alert("密码至少6位"); return; }
-    const { error } = await supabase.auth.signUp({ email, password });
-    if(error) {
-        alert("注册失败：" + error.message);
+    if(!username||!password){alert("填写用户名密码");return;}
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/accounts`,{
+        method:"POST",
+        headers:{
+            "apikey":SUPABASE_ANON_KEY,
+            "Content‑Type":"application/json",
+            "Prefer":"return=representation"
+        },
+        body:JSON.stringify([{username,password}])
+    });
+    const data = await res.json();
+    if(res.ok){
+        alert("注册成功，请登录");
+    }else{
+        alert("注册失败："+JSON.stringify(data));
+    }
+}
+
+//登录
+document.getElementById("btnLogin").onclick = async function(){
+    const username = unameEl.value.trim();
+    const password = pwdEl.value.trim();
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/accounts?username=eq.${encodeURIComponent(username)}&password=eq.${encodeURIComponent(password)}`,{
+        method:"GET",
+        headers:{"apikey":SUPABASE_ANON_KEY}
+    });
+    const arr = await res.json();
+    if(arr.length===0){
+        alert("用户名或密码错误");
         return;
     }
-    alert("注册成功，请登录");
-};
+    const user = arr[0];
+    myUserId = user.id;
+    localStorage.setItem("game_user_id",myUserId);
+    await enterGame(myUserId);
+}
 
-document.getElementById('btnLogin').onclick = async () => {
-    const email = emailEl.value.trim();
-    const password = pwdEl.value.trim();
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if(error) {
-        alert("登录失败：" + error.message);
-    }
-};
+//退出
+document.getElementById("btnLogout").onclick = function(){
+    myUserId = null;
+    localStorage.removeItem("game_user_id");
+    authPage.classList.remove("hide");
+    gamePage.classList.add("hide");
+}
 
-document.getElementById('btnLogout').onclick = async () => {
-    await supabase.auth.signOut();
-};
-
-async function enterGame(user) {
-    authPage.classList.add('hide');
-    gamePage.classList.remove('hide');
-
-    let { data:player } = await supabase.from('users').select('*').eq('id', user.id).single();
-    if(!player) {
-        const randName = "修仙者" + Math.floor(Math.random()*99999);
-        await supabase.from('users').insert({ id:user.id, name:randName, gold:100 });
-        player = { name:randName, gold:100 };
+async function enterGame(accountId){
+    authPage.classList.add("hide");
+    gamePage.classList.remove("hide");
+    // 查询users角色表，没有就新建角色
+    let res = await fetch(`${SUPABASE_URL}/rest/v1/users?id=eq.${encodeURIComponent(accountId)}`,{
+        headers:{"apikey":SUPABASE_ANON_KEY}
+    });
+    let playerArr = await res.json();
+    let player;
+    if(playerArr.length===0){
+        const randName = "修仙者"+Math.floor(Math.random()*99999);
+        await fetch(`${SUPABASE_URL}/rest/v1/users`,{
+            method:"POST",
+            headers:{
+                "apikey":SUPABASE_ANON_KEY,
+                "Content‑Type":"application/json",
+                "Prefer":"return=representation"
+            },
+            body:JSON.stringify([{id:accountId,name:randName,gold:100}])
+        })
+        player = {name:randName,gold:100};
+    }else{
+        player = playerArr[0];
     }
     roleNameEl.innerText = player.name;
     goldNumEl.innerText = player.gold;
-    await loadBag(user);
+    await loadBag(accountId);
 }
 
-btnDraw.onclick = async () => {
-    const { data:{user} } = await supabase.auth.getUser();
-    if(!user) { alert("请先登录"); return; }
-    const { data:player } = await supabase.from('users').select('gold').eq('id', user.id).single();
-    if(player.gold < 10) {
-        drawResult.innerHTML = "<p>金币不足！</p>";
+//抽卡
+btnDraw.onclick = async function(){
+    if(!myUserId){alert("请登录");return;}
+    //拿金币
+    let r1 = await fetch(`${SUPABASE_URL}/rest/v1/users?id=eq.${encodeURIComponent(myUserId)}`,{headers:{"apikey":SUPABASE_ANON_KEY}});
+    let pArr = await r1.json();
+    let p = pArr[0];
+    if(p.gold <10){
+        drawResult.innerHTML="<p>金币不足！</p>";
         return;
     }
-    await supabase.from('users').update({ gold: player.gold - 10 }).eq('id', user.id);
-    const r = Math.random();
-    let item, rarityClass;
-    if(r < 0.5) {
-        item = {item_name:"普通铁剑", item_data:{lv:1,atk:5}, rarity:"common", user_id:user.id};
-        rarityClass = "rarity-common";
-    } else if(r < 0.8) {
-        item = {item_name:"灵木法杖", item_data:{lv:2,atk:12}, rarity:"rare", user_id:user.id};
-        rarityClass = "rarity-rare";
-    } else if(r < 0.95) {
-        item = {item_name:"紫电宝甲", item_data:{lv:3,def:20}, rarity:"epic", user_id:user.id};
-        rarityClass = "rarity-epic";
-    } else {
-        item = {item_name:"九霄仙剑", item_data:{lv:5,atk:55}, rarity:"legend", user_id:user.id};
-        rarityClass = "rarity-legend";
+    //扣金币
+    await fetch(`${SUPABASE_URL}/rest/v1/users?id=eq.${encodeURIComponent(myUserId)}`,{
+        method:"PATCH",
+        headers:{
+            "apikey":SUPABASE_ANON_KEY,
+            "Content‑Type":"application/json"
+        },
+        body:JSON.stringify({gold:p.gold‑10})
+    })
+    const rnd = Math.random();
+    let item,rarityClass;
+    if(rnd<0.5){
+        item = {item_name:"普通铁剑",item_data:{lv:1,atk:5},rarity:"common",user_id:myUserId};
+        rarityClass="rarity‑common";
+    }else if(rnd<0.8){
+        item = {item_name:"灵木法杖",item_data:{lv:2,atk:12},rarity:"rare",user_id:myUserId};
+        rarityClass="rarity‑rare";
+    }else if(rnd<0.95){
+        item = {item_name:"紫电宝甲",item_data:{lv:3,def:20},rarity:"epic",user_id:myUserId};
+        rarityClass="rarity‑epic";
+    }else{
+        item = {item_name:"九霄仙剑",item_data:{lv:5,atk:55},rarity:"legend",user_id:myUserId};
+        rarityClass="rarity‑legend";
     }
-    await supabase.from('items').insert(item);
-    drawResult.innerHTML = `<div class="item-card ${rarityClass}"><p>抽到：${item.item_name}</p></div>`;
-    goldNumEl.innerText = player.gold - 10;
-    await loadBag(user);
-};
+    await fetch(`${SUPABASE_URL}/rest/v1/items`,{
+        method:"POST",
+        headers:{
+            "apikey":SUPABASE_ANON_KEY,
+            "Content‑Type":"application/json"
+        },
+        body:JSON.stringify([item])
+    })
+    drawResult.innerHTML = `<div class="item‑card ${rarityClass}"><p>抽到：${item.item_name}</p></div>`;
+    goldNumEl.innerText = p.gold‑10;
+    await loadBag(myUserId);
+}
 
-async function loadBag(user) {
-    if(!user) {
-        const { data } = await supabase.auth.getUser();
-        user = data.user;
-    }
-    if(!user) return;
-    const { data:bag } = await supabase.from('items').select('*').eq('user_id', user.id).order('created_at', {ascending:false});
+async function loadBag(uid){
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/items?user_id=eq.${encodeURIComponent(uid)}&order=created_at.desc`,{
+        headers:{"apikey":SUPABASE_ANON_KEY}
+    });
+    const bag = await res.json();
     bagList.innerHTML = "";
-    if(!bag || bag.length === 0) {
-        bagList.innerHTML = "<p>背包空空如也，快去抽装备</p>";
+    if(!bag||bag.length===0){
+        bagList.innerHTML="<p>背包空空如也，快去抽装备</p>";
         return;
     }
-    bag.forEach(it => {
-        let cls = "rarity-common";
-        if(it.rarity === "rare") cls = "rarity-rare";
-        if(it.rarity === "epic") cls = "rarity-epic";
-        if(it.rarity === "legend") cls = "rarity-legend";
-        bagList.innerHTML += `
-        <div class="item-card ${cls}">
+    bag.forEach(it=>{
+        let cls = "rarity‑common";
+        if(it.rarity==="rare")cls="rarity‑rare";
+        if(it.rarity==="epic")cls="rarity‑epic";
+        if(it.rarity==="legend")cls="rarity‑legend";
+        bagList.innerHTML += `<div class="item‑card ${cls}">
             <div>${it.item_name}</div>
             <div>等级:${it.item_data.lv} 攻击:${it.item_data.atk||0} 防御:${it.item_data.def||0}</div>
         </div>`;
     })
 }
-btnLoadBag.onclick = ()=> loadBag();
+btnLoadBag.onclick = ()=> loadBag(myUserId);
 </script>
 </body>
 </html>
