@@ -120,7 +120,7 @@ const TypingGame = {
         div.style.top = "0px";
 
         // 速度再次大幅降低，基础0.04，最多0.16，下落非常缓慢
-        const speed = Math.min(0.04 + (this.combo / 600), 0.16);
+        const speed = Math.min(0.1 + (this.combo / 600), 0.16);
 
         this.gameArea.appendChild(div);
         this.fallingWords.push({
