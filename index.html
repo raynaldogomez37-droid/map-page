@@ -2,21 +2,60 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>首页</title>
-    <style>
-        body{background:#f0f4f8;font-family:微软雅黑;text-align:center;margin-top:40px;}
-        .card{background:white;padding:30px;border-radius:12px;box-shadow:0 0 10px #ccc;max-width:500px;margin:0 auto;}
-        img{width:300px;border-radius:8px;margin:20px 0;}
-        a{font-size:18px;color:#2563eb;text-decoration:none;}
-    </style>
+    <title>Supabase简易测试</title>
 </head>
 <body>
-    <div class="card">
-        <h1>像素猫咪首页</h1>
-        <img src="cat.png" alt="穿外套的橘猫">
-        <p>可爱的像素风小猫咪</p>
-        <a href="about.html">进入关于页面</a>
-    </div>
+<h2>users / items 数据库测试</h2>
+<div>
+    <button onclick="addUser()">新增测试用户</button>
+    <button onclick="listUser()">读取全部用户</button>
+    <br><br>
+    <button onclick="addItem()">新增测试道具</button>
+    <button onclick="listItem()">读取全部道具</button>
+    <pre id="out"></pre>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPABASE_URL = "https://akbkupgqscgzokwjnllr.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_rnKCzXAh4OL1DIDIrTUf4A_JLnjfbWr";
+
+const { createClient } = window.supabase;
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const outDom = document.getElementById("out");
+
+function log(txt){ outDom.innerText = txt; }
+
+// 新增用户
+async function addUser(){
+    const {data,err}=await supabase.from("users").insert([{
+        name:"测试玩家"+Date.now(),
+        gold:10
+    }]).select();
+    log(JSON.stringify({data,err},null,2));
+}
+
+// 查询用户列表
+async function listUser(){
+    const {data,err}=await supabase.from("users").select("*");
+    log(JSON.stringify({data,err},null,2));
+}
+
+// 新增道具
+async function addItem(){
+    const {data,err}=await supabase.from("items").insert([{
+        user_id:null,
+        item_name:"测试宝剑",
+        item_data:{level:1,attr:"锋利"}
+    }]).select();
+    log(JSON.stringify({data,err},null,2));
+}
+
+// 查询道具列表
+async function listItem(){
+    const {data,err}=await supabase.from("items").select("*");
+    log(JSON.stringify({data,err},null,2));
+}
+</script>
 </body>
 </html>
