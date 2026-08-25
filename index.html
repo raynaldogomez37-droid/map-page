@@ -2,37 +2,50 @@
 <html lang="zh‑CN">
 <head>
 <meta charset="UTF‑8">
-<meta name="viewport" content="width=device‑width, initial‑scale=1.0">
+<meta name="viewport" content="width=device‑width, initial‑scale=1.0, maximum‑scale=1.0, user‑scalable=no">
 <title>修仙游戏</title>
 <style>
-*{margin:0;padding:0;box‑sizing:border‑box;}
-html,body{
-    background:#000;
-    height:100vh;
+*{
+    margin:0;
+    padding:0;
+    box‑sizing:border‑box;
+}
+html{
+    height:100%;
+}
+body{
+    background:#000000;
+    min‑height:100%;
+    width:100%;
+    /* 兼容全部手机浏览器居中方案 */
     display:flex;
+    flex‑direction:column;
     justify‑content:center;
     align‑items:center;
 }
+.splash‑container{
+    width:100%;
+    text‑align:center;
+}
 .logo{
-    width:220px;
-    height:220px;
-    border‑radius:16px;
-    object‑fit:cover;
+    width: min(75vw, 320px);
+    height:auto;
+    display:inline‑block;
 }
 .tip{
-    color:#aaa;
-    margin‑top:24px;
+    color:#aaaaaa;
+    margin‑top:28px;
     font‑size:15px;
 }
 </style>
 </head>
 <body>
-<div>
+<div class="splash‑container">
     <img class="logo" src="https://cdn.harmony5.cn/square/5c5a222b-2dd3-4ef0-8c7c-bdd10afce405.jpg" alt="游戏logo">
     <div class="tip">正在启动游戏...</div>
 </div>
 <script>
-// 5000毫秒=5秒后跳转到登录页
+// 5秒跳转到登录页
 setTimeout(function(){
     location.href="login.html";
 },5000);
