@@ -28,7 +28,13 @@ const TypingGame = {
         this.startBtn = document.getElementById("startBtn");
 
         this.startBtn.addEventListener("click",()=>this.startGame());
-        this.inputEl.addEventListener("input",(e)=>this.onInput(e.target.value));
+        // 回车提交单词
+        this.inputEl.addEventListener("keydown", (e)=>{
+            if(e.key === "Enter"){
+                e.preventDefault();
+                this.onSubmit();
+            }
+        });
 
         this.loadSave();
         this.updateTopUi();
@@ -113,7 +119,8 @@ const TypingGame = {
         div.style.left = left + "%";
         div.style.top = "0px";
 
-        const speed = Math.min(1.2 + (this.combo / 22), 4.2);
+        // 基础速度大幅降低，连击只小幅加速
+        const speed = Math.min(0.4 + (this.combo / 60), 1.6);
 
         this.gameArea.appendChild(div);
         this.fallingWords.push({
@@ -127,7 +134,8 @@ const TypingGame = {
     loop(){
         if(!this.gameRunning) return;
 
-        if(Math.random() < 0.012 + this.combo * 0.0008){
+        // 单词生成概率降低，不会刷一大堆
+        if(Math.random() < 0.006 + this.combo * 0.0004){
             this.spawnWord();
         }
 
@@ -164,22 +172,24 @@ const TypingGame = {
         requestAnimationFrame(()=>this.loop());
     },
 
-    onInput(text){
+    // 回车提交单词进行匹配
+    onSubmit(){
         if(!this.gameRunning) return;
+        const inputText = this.inputEl.value.toLowerCase().trim();
+        if(!inputText){
+            return;
+        }
 
-        const inputText = text.toLowerCase().trim();
-
+        let hit = false;
         for(let i = 0; i < this.fallingWords.length; i++){
             const w = this.fallingWords[i];
-
             if(w.word === inputText){
                 this.exp += 8;
                 this.combo += 1;
 
                 w.el.remove();
                 this.fallingWords.splice(i, 1);
-
-                this.inputEl.value = "";
+                hit = true;
 
                 this.checkComboReward();
                 this.rollDrop();
@@ -190,6 +200,9 @@ const TypingGame = {
                 break;
             }
         }
+        // 提交之后清空输入框，保持焦点继续输入
+        this.inputEl.value = "";
+        this.inputEl.focus();
     },
 
     checkComboReward(){
