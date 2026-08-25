@@ -119,8 +119,8 @@ const TypingGame = {
         div.style.left = left + "%";
         div.style.top = "0px";
 
-        // 基础速度大幅降低，连击只小幅加速
-        const speed = Math.min(0.4 + (this.combo / 60), 1.6);
+        // 速度再次大幅降低，基础0.04，最多0.16，下落非常缓慢
+        const speed = Math.min(0.04 + (this.combo / 600), 0.16);
 
         this.gameArea.appendChild(div);
         this.fallingWords.push({
@@ -134,8 +134,8 @@ const TypingGame = {
     loop(){
         if(!this.gameRunning) return;
 
-        // 单词生成概率降低，不会刷一大堆
-        if(Math.random() < 0.006 + this.combo * 0.0004){
+        // 生成频率降低，不会大量刷词
+        if(Math.random() < 0.0012 + this.combo * 0.00008){
             this.spawnWord();
         }
 
