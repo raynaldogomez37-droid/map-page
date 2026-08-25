@@ -7,7 +7,7 @@
     <style>
         * {box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui}
         html,body {
-            background:#000;
+            background:#000000;
             min-height:100vh;
         }
         #gameWrap{
@@ -29,16 +29,16 @@
         }
         .item-card {
             background:#eeeeee;
-            color:#000;
+            color:#000000;
             padding:10px;
             border-radius:8px;
             margin:8px 0;
         }
-        .rarity-common {border-left:4px solid #777}
+        .rarity-common {border-left:4px solid #777777}
         .rarity-rare {border-left:4px solid #4cc9f0}
         .rarity-epic {border-left:4px solid #7209b7}
         .rarity-legend {border-left:4px solid #f77f00}
-        .tip {color:#555; margin:10px 0;font-size:14px}
+        .tip {color:#555555; margin:10px 0;font-size:14px}
         .error {color:#dc2626}
         button {
             width:100%;
@@ -47,10 +47,10 @@
             border:none;
             border-radius:8px;
             background:#2563eb;
-            color:#fff;
+            color:#ffffff;
             font-size:16px;
         }
-        button:disabled {background:#888;opacity:0.7;cursor:not‑allowed;}
+        button:disabled {background:#888888;opacity:0.7;cursor:not‑allowed;}
         button.danger {background:#b91c1c}
         button.gold {background:#d97706}
         .hide{display:none !important;}
@@ -94,15 +94,17 @@ let myUserId = sessionStorage.getItem("game_user_id") || null;
 let isLoading = false;
 
 (async function init(){
-    // 没有登录凭证，强制跳回登录页
     if(!myUserId){
         location.href = "login.html";
         return;
     }
+    roleNameEl.innerText = "加载中...";
+    goldNumEl.innerText = "加载中...";
+    drawResult.innerHTML = "";
+    bagList.innerHTML = "";
     await enterGame(myUserId);
 })();
 
-// 退出登录，清空存储，跳转登录页
 document.getElementById("btnLogout").onclick = function(){
     myUserId = null;
     sessionStorage.removeItem("game_user_id");
@@ -110,17 +112,13 @@ document.getElementById("btnLogout").onclick = function(){
 }
 
 async function enterGame(accountId){
-    roleNameEl.innerText = "-";
-    goldNumEl.innerText = "0";
-    drawResult.innerHTML = "";
-    bagList.innerHTML = "";
-    bagTip.innerText="正在加载角色数据...";
+    bagTip.innerText="正在加载角色数据，请稍候...";
     bagTip.classList.remove("error");
     try{
-        let res = await fetch(`${SUPABASE_URL}/rest/v1/users?id=eq.${encodeURIComponent(accountId)}`,{
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/users?id=eq.${encodeURIComponent(accountId)}`,{
             headers:{"apikey":SUPABASE_ANON_KEY}
         });
-        let playerArr = await res.json();
+        const playerArr = await res.json();
         let player;
         if(playerArr.length===0){
             const randName = "修仙者"+Math.floor(Math.random()*99999);
@@ -141,9 +139,11 @@ async function enterGame(accountId){
         goldNumEl.innerText = player.gold;
         await loadBag(accountId);
     }catch(err){
-        bagTip.innerText="加载角色失败";
+        bagTip.innerText="角色加载失败，请刷新页面！网络或者接口异常";
         bagTip.classList.add("error");
         console.error("角色加载错误",err);
+        roleNameEl.innerText = "异常";
+        goldNumEl.innerText = "异常";
     }
 }
 
@@ -155,9 +155,9 @@ btnDraw.onclick = async function(){
     drawTip.classList.remove("error");
     this.disabled = true;
     try{
-        let r1 = await fetch(`${SUPABASE_URL}/rest/v1/users?id=eq.${encodeURIComponent(myUserId)}`,{headers:{"apikey":SUPABASE_ANON_KEY}});
-        let pArr = await r1.json();
-        let p = pArr[0];
+        const r1 = await fetch(`${SUPABASE_URL}/rest/v1/users?id=eq.${encodeURIComponent(myUserId)}`,{headers:{"apikey":SUPABASE_ANON_KEY}});
+        const pArr = await r1.json();
+        const p = pArr[0];
         if(p.gold <10){
             drawResult.innerHTML="<p>金币不足！</p>";
             drawTip.innerText="";
@@ -242,7 +242,7 @@ async function loadBag(uid){
         bagList.innerHTML = html;
         bagTip.innerText="背包加载完成";
     }catch(err){
-        bagTip.innerText="背包加载失败，请点击刷新";
+        bagTip.innerText="背包加载失败，请点刷新背包";
         bagTip.classList.add("error");
         console.error("背包加载错误",err);
     }
@@ -259,4 +259,3 @@ btnLoadBag.onclick = async function(){
 </script>
 </body>
 </html>
-
