@@ -41,7 +41,6 @@ html,body{
     border:1px solid #555;
     border-radius:8px;
     font-size:16px;
-    /* 默认隐藏，超时才显示 */
     display:none;
 }
 </style>
@@ -53,25 +52,22 @@ html,body{
     <button id="manualBtn" class="jump-btn" onclick="goLogin()">点击进入游戏</button>
 </div>
 <script>
-// 填入你的github pages完整域名
-const BASE_URL = "https://raynaldogomez37-droid.github.io";
-const loginPage = BASE_URL + "/login.html";
+// 自动读取当前网站域名，不用手动写死，避免填错域名404
+function goLogin(){
+    clearTimeout(timer);
+    clearTimeout(showBtnTimer);
+    // origin = 当前网站根域名，拼接页面文件名
+    let target = window.location.origin + window.location.pathname.replace("index.html","login.html");
+    window.location.href = target;
+}
 
 let timer = setTimeout(function(){
     goLogin();
 },5000);
 
-// 8秒后自动把手动按钮显示出来，定时器卡死的时候给用户入口
 let showBtnTimer = setTimeout(function(){
     document.getElementById('manualBtn').style.display = 'inline-block';
 },8000);
-
-function goLogin(){
-    clearTimeout(timer);
-    clearTimeout(showBtnTimer);
-    // 使用绝对完整地址跳转，解决安卓相对路径死循环
-    window.location.href = loginPage;
-}
 
 window.onbeforeunload=()=>{
     clearTimeout(timer);
