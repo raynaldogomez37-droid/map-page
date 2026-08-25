@@ -28,179 +28,206 @@ const TypingGame = {
         this.startBtn = document.getElementById("startBtn");
 
         this.startBtn.addEventListener("click",()=>this.startGame());
-        // 回车提交单词
         this.inputEl.addEventListener("keydown", (e)=>{
             if(e.key === "Enter"){
                 e.preventDefault();
                 this.onSubmit();
             }
         });
-
-        this.loadSave();
+        //页面初始化加载云端存档
+        this.loadCloudSave();
         this.updateTopUi();
     },
 
-    save(){
-        const saveObj = {
+    // =====云端保存，替换原来localStorage save()=====
+    async saveCloud(){
+        const user = supabase.auth.user();
+        if(!user) return;
+        const payload = {
             hp:this.hp,
-            maxHp:this.maxHp,
+            max_hp:this.maxHp,
             exp:this.exp,
             level:this.level,
+            gold:GameData.gold,
             bag:GameData.bag,
             warehouse:GameData.warehouse,
-            wearingEquip:GameData.wearingEquip,
-            gold:GameData.gold
+            wearing_equip:GameData.wearingEquip
         }
-        localStorage.setItem("typingSave",JSON.stringify(saveObj));
+        await supabase.from("player_save")
+        .update(payload)
+        .eq("user_id", user.id);
     },
 
-    loadSave(){
-        const str = localStorage.getItem("typingSave");
-        if(!str) return;
-        try{
-            const d = JSON.parse(str);
-            this.hp = d.hp ?? 100;
-            this.maxHp = d.maxHp ?? 100;
-            this.exp = d.exp ?? 0;
-            this.level = d.level ?? 1;
-            GameData.bag = d.bag ?? [];
-            GameData.warehouse = d.warehouse ?? [];
-            GameData.wearingEquip = d.wearingEquip ?? [];
-            GameData.gold = d.gold ?? 0;
-        }catch(e){
-            console.log("存档读取失败",e);
+    // =====读取云端存档，数据库同时计算是否处于冷却in_cooldown=====
+    async loadCloudSave(){
+        const user = supabase.auth.user();
+        if(!user){
+            alert("请先登录账号");
+            this.startBtn.disabled = true;
+            return;
         }
+        const {data,error} = await supabase
+        .from('player_save')
+        .select(`*,
+        cooldown_end_ts > (extract(epoch from now())*1000) as in_cooldown
+        `)
+        .eq("user_id",user.id)
+        .single();
+
+        //新注册用户没有存档记录 → 创建初始存档
+        if(error && error.code === 'PGRST116'){
+            await supabase.from("player_save").insert({
+                user_id:user.id,
+                hp:100,
+                max_hp:100,
+                exp:0,
+                level:1,
+                gold:0,
+                cooldown_end_ts:0
+            })
+            return await this.loadCloudSave();
+        }
+        if(error || !data) return;
+
+        //赋值游戏变量
+        this.hp = data.hp;
+        this.maxHp = data.max_hp;
+        this.exp = data.exp;
+        this.level = data.level;
+        GameData.bag = data.bag;
+        GameData.warehouse = data.warehouse;
+        GameData.wearingEquip = data.wearing_equip;
+        GameData.gold = data.gold;
+
+        //数据库返回的冷却状态，不受手机系统时间篡改影响
+        if(data.in_cooldown){
+            this.startBtn.disabled = true;
+            this.startBtn.innerText = "死亡冷却中";
+        }else{
+            this.startBtn.disabled = false;
+            this.startBtn.innerText = "开始训练";
+        }
+        this.updateTopUi();
     },
 
     startGame(){
         if(this.gameRunning) return;
-
-        if(this.hp <= 0){
-            alert("血量耗尽，请等待冷却结束！");
-            return;
-        }
-
-        this.gameRunning = true;
-        this.combo = 0;
-        this.fallingWords = [];
-
-        this.startBtn.style.display = "none";
-
-        const childs = Array.from(this.gameArea.children);
-        childs.forEach(el=>{
-            if(el.classList.contains("fall-word")) el.remove();
-        });
-
-        this.inputEl.value = "";
-        this.inputEl.style.display = "block";
-
-        setTimeout(()=>{
-            this.inputEl.focus();
-        }, 100);
-
-        this.loop();
+        //开局先拉一次云端最新状态确认冷却
+        this.loadCloudSave().then(()=>{
+            if(this.startBtn.disabled){
+                alert("当前处于死亡冷却，无法开始游戏");
+                return;
+            }
+            if(this.hp <= 0){
+                alert("血量耗尽！");
+                return;
+            }
+            this.gameRunning = true;
+            this.combo = 0;
+            this.fallingWords = [];
+            this.startBtn.style.display = "none";
+            const childs = Array.from(this.gameArea.children);
+            childs.forEach(el=>{
+                if(el.classList.contains("fall-word")) el.remove();
+            });
+            this.inputEl.value = "";
+            this.inputEl.style.display = "block";
+            setTimeout(()=>{
+                this.inputEl.focus();
+            }, 100);
+            this.loop();
+        })
     },
 
     stopGame(){
         this.gameRunning = false;
         this.startBtn.style.display = "block";
-        this.save();
+        this.saveCloud();
     },
 
     spawnWord(){
         if(!this.gameRunning) return;
-
         const rand = this.wordList[Math.floor(Math.random()*this.wordList.length)];
         const div = document.createElement("div");
         div.className = "fall-word";
         div.innerHTML = `<div>${rand.word}</div><div class='desc'>${rand.desc}</div>`;
-
         const left = Math.random() * 80;
         div.style.left = left + "%";
         div.style.top = "0px";
-
-        // 速度再次大幅降低，基础0.04，最多0.16，下落非常缓慢
-        const speed = Math.min(0.1 + (this.combo / 600), 0.16);
-
         this.gameArea.appendChild(div);
         this.fallingWords.push({
             el:div,
             word:rand.word.toLowerCase(),
-            top:0,
-            speed:speed
+            top:0
         });
     },
 
     loop(){
         if(!this.gameRunning) return;
-
-        // 生成频率降低，不会大量刷词
-        if(Math.random() < 0.0012 + this.combo * 0.00008){
+        const spawnRate = 0.0015 + this.combo * 0.00008;
+        if(Math.random() < spawnRate){
             this.spawnWord();
         }
+        const baseSpeed = 0.2;
+        const maxSpeed = 0.6;
+        const currentSpeed = Math.min(baseSpeed + (this.combo / 120), maxSpeed);
 
         for(let i = this.fallingWords.length - 1; i >= 0; i--){
             const w = this.fallingWords[i];
-            w.top += w.speed;
+            w.top += currentSpeed;
             w.el.style.top = w.top + "px";
 
             if(w.top > this.gameArea.clientHeight - 60){
                 this.hp -= 5;
                 this.combo = 0;
-
                 w.el.remove();
                 this.fallingWords.splice(i, 1);
-
                 this.updateTopUi();
-                this.save();
+                this.saveCloud();
 
                 if(this.hp <= 0){
                     this.stopGame();
-                    alert("血量归零！进入3分钟冷却！");
-
-                    setTimeout(()=>{
-                        this.hp = this.maxHp;
-                        this.updateTopUi();
-                        this.save();
-                    }, 1000 * 60 * 3);
-
+                    alert("血量归零！进入3分钟死亡冷却！");
+                    //死亡写入冷却时间戳到Supabase数据库
+                    (async ()=>{
+                        const user = supabase.auth.user();
+                        const cdMs = Date.now() + 3 * 60 * 1000;
+                        await supabase.from("player_save")
+                        .update({cooldown_end_ts:cdMs})
+                        .eq("user_id",user.id);
+                        //刷新页面按钮状态
+                        this.loadCloudSave();
+                    })()
                     return;
                 }
             }
         }
-
         requestAnimationFrame(()=>this.loop());
     },
 
-    // 回车提交单词进行匹配
     onSubmit(){
         if(!this.gameRunning) return;
         const inputText = this.inputEl.value.toLowerCase().trim();
         if(!inputText){
             return;
         }
-
         let hit = false;
         for(let i = 0; i < this.fallingWords.length; i++){
             const w = this.fallingWords[i];
             if(w.word === inputText){
                 this.exp += 8;
                 this.combo += 1;
-
                 w.el.remove();
                 this.fallingWords.splice(i, 1);
                 hit = true;
-
                 this.checkComboReward();
                 this.rollDrop();
                 this.checkLevelUp();
                 this.updateTopUi();
-                this.save();
-
+                this.saveCloud();
                 break;
             }
         }
-        // 提交之后清空输入框，保持焦点继续输入
         this.inputEl.value = "";
         this.inputEl.focus();
     },
@@ -210,13 +237,12 @@ const TypingGame = {
             this.combo = 0;
             GameData.bag.push({type:"chest", name:"连击宝箱"});
             alert("连击12！获得宝箱存入背包！");
-            this.save();
+            this.saveCloud();
         }
     },
 
     rollDrop(){
         const r = Math.random();
-
         if(r < 0.04){
             GameData.bag.push({type:"gold", count:Math.floor(Math.random()*12)+3});
         }else if(r < 0.07){
@@ -230,37 +256,30 @@ const TypingGame = {
         }else if(r < 0.095){
             GameData.bag.push({type:"chest", name:"掉落宝箱"});
         }
-
-        this.save();
+        this.saveCloud();
     },
 
     checkLevelUp(){
         const needExp = this.level * 60;
-
         if(this.exp >= needExp){
             this.exp -= needExp;
             this.level += 1;
             this.maxHp += 12;
             this.hp = this.maxHp;
-
             alert(`升级！当前等级${this.level}`);
-            this.save();
+            this.saveCloud();
         }
     },
 
     updateTopUi(){
         document.getElementById("lvText").innerText = this.level;
-
         const needExp = this.level * 60;
         document.getElementById("expBar").style.width = Math.min(100, (this.exp / needExp) * 100) + "%";
-
         document.getElementById("hpText").innerText = `${this.hp}/${this.maxHp}`;
-
         let atk = 2;
         GameData.wearingEquip.forEach(e=>{
             if(e.atk) atk += e.atk;
         });
-
         document.getElementById("atkText").innerText = atk;
     }
 }
