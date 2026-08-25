@@ -2,31 +2,30 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial‑scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>修仙网页Demo</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        *{box-sizing:border-box;margin:0;padding:0;font-family:system-ui}
-        body{background:#1a1a2e;color:#eee;padding:16px;max-width:600px;margin:0 auto}
-        .box{background:#27293d;padding:18px;border-radius:12px;margin-bottom:14px}
-        input{width:100%;padding:10px;margin:8px 0;border-radius:6px;border:none;background:#383b54;color:#fff;font-size:16px}
-        button{width:100%;padding:11px;margin:6px 0;border:none;border-radius:8px;background:#4361ee;color:#fff;font-size:16px}
-        button.danger{background:#e63946}
-        button.gold{background:#f77f00}
-        .hide{display:none}
-        .item-card{background:#32354e;padding:10px;border-radius:8px;margin:8px 0}
-        .rarity‑common{border-left:4px solid #aaa}
-        .rarity‑rare{border-left:4px solid #4cc9f0}
-        .rarity‑epic{border-left:4px solid #7209b7}
-        .rarity‑legend{border-left:4px solid #f77f00}
+        * {box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui}
+        body {background: #1a1a2e; color: #eee; padding: 16px; max-width: 600px; margin: 0 auto}
+        .box {background: #27293d; padding: 18px; border-radius: 12px; margin-bottom: 14px}
+        input {width: 100%; padding: 10px; margin: 8px 0; border-radius: 6px; border: none; background: #383b54; color: #fff; font-size: 16px}
+        button {width: 100%; padding: 11px; margin: 6px 0; border: none; border-radius: 8px; background: #4361ee; color: #fff; font-size: 16px}
+        button.danger {background: #e63946}
+        button.gold {background: #f77f00}
+        .hide {display: none}
+        .item-card {background: #32354e; padding: 10px; border-radius: 8px; margin: 8px 0}
+        .rarity-common {border-left: 4px solid #aaa}
+        .rarity-rare {border-left: 4px solid #4cc9f0}
+        .rarity-epic {border-left: 4px solid #7209b7}
+        .rarity-legend {border-left: 4px solid #f77f00}
     </style>
 </head>
 <body>
-
 <div id="authPage" class="box">
     <h2>修仙账号</h2>
     <input id="email" placeholder="邮箱">
-    <input id="pwd" type="password" placeholder="密码">
+    <input id="pwd" type="password" placeholder="密码(至少6位)">
     <button id="btnRegister">注册账号</button>
     <button id="btnLogin">登录账号</button>
 </div>
@@ -38,13 +37,11 @@
         <p>金币：<span id="goldNum">0</span></p>
         <button class="danger" id="btnLogout">退出登录</button>
     </div>
-
     <div class="box">
         <h3>秘境抽装备（消耗10金币）</h3>
         <button class="gold" id="btnDraw">开始抽装备</button>
         <div id="drawResult"></div>
     </div>
-
     <div class="box">
         <h3>我的背包</h3>
         <button id="btnLoadBag">刷新背包</button>
@@ -55,7 +52,6 @@
 <script>
 const SUPABASE_URL = "https://akbkupgqscgzokwjnllr.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_rnKCzXAh4OL1DIDIrTUf4A_JLnjfbWr";
-
 const { createClient } = window.supabase;
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -63,7 +59,6 @@ const authPage = document.getElementById('authPage');
 const gamePage = document.getElementById('gamePage');
 const emailEl = document.getElementById('email');
 const pwdEl = document.getElementById('pwd');
-
 const roleNameEl = document.getElementById('roleName');
 const goldNumEl = document.getElementById('goldNum');
 const btnDraw = document.getElementById('btnDraw');
@@ -71,39 +66,116 @@ const drawResult = document.getElementById('drawResult');
 const btnLoadBag = document.getElementById('btnLoadBag');
 const bagList = document.getElementById('bagList');
 
-document.getElementById('btnRegister').onclick = async ()=>{
+// 官方标准监听登录状态，不抢异步
+supabase.auth.onAuthStateChange(async (event, session) => {
+    console.log("auth事件", event, session);
+    if(session && session.user) {
+        await enterGame(session.user);
+    } else {
+        authPage.classList.remove('hide');
+        gamePage.classList.add('hide');
+    }
+});
+
+document.getElementById('btnRegister').onclick = async () => {
     const email = emailEl.value.trim();
     const password = pwdEl.value.trim();
-    if(!email||!password){alert("请填写邮箱密码");return;}
-    const {data,error}=await supabase.auth.signUp({email,password});
-    if(error) return alert(error.message);
+    if(!email || !password) { alert("请填写邮箱密码"); return; }
+    if(password.length < 6) { alert("密码至少6位"); return; }
+    const { error } = await supabase.auth.signUp({ email, password });
+    if(error) {
+        alert("注册失败：" + error.message);
+        return;
+    }
     alert("注册成功，请登录");
 };
 
-document.getElementById('btnLogin').onclick = async ()=>{
+document.getElementById('btnLogin').onclick = async () => {
     const email = emailEl.value.trim();
     const password = pwdEl.value.trim();
-    const {data,error}=await supabase.auth.signInWithPassword({email,password});
-    if(error) return alert(error.message);
-    await enterGame();
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if(error) {
+        alert("登录失败：" + error.message);
+    }
 };
 
-document.getElementById('btnLogout').onclick = async ()=>{
+document.getElementById('btnLogout').onclick = async () => {
     await supabase.auth.signOut();
-    authPage.classList.remove('hide');
-    gamePage.classList.add('hide');
 };
 
-async function enterGame(){
+async function enterGame(user) {
     authPage.classList.add('hide');
     gamePage.classList.remove('hide');
-    const {data:{user}} = await supabase.auth.getUser();
-    if(!user) return;
 
-    let {data:player} = await supabase.from('users').select('*').eq('id',user.id).single();
-    if(!player){
-        const randName = "修仙者"+Math.floor(Math.random()*99999);
-        await supabase.from('users').insert({
+    let { data:player } = await supabase.from('users').select('*').eq('id', user.id).single();
+    if(!player) {
+        const randName = "修仙者" + Math.floor(Math.random()*99999);
+        await supabase.from('users').insert({ id:user.id, name:randName, gold:100 });
+        player = { name:randName, gold:100 };
+    }
+    roleNameEl.innerText = player.name;
+    goldNumEl.innerText = player.gold;
+    await loadBag(user);
+}
+
+btnDraw.onclick = async () => {
+    const { data:{user} } = await supabase.auth.getUser();
+    if(!user) { alert("请先登录"); return; }
+    const { data:player } = await supabase.from('users').select('gold').eq('id', user.id).single();
+    if(player.gold < 10) {
+        drawResult.innerHTML = "<p>金币不足！</p>";
+        return;
+    }
+    await supabase.from('users').update({ gold: player.gold - 10 }).eq('id', user.id);
+    const r = Math.random();
+    let item, rarityClass;
+    if(r < 0.5) {
+        item = {item_name:"普通铁剑", item_data:{lv:1,atk:5}, rarity:"common", user_id:user.id};
+        rarityClass = "rarity-common";
+    } else if(r < 0.8) {
+        item = {item_name:"灵木法杖", item_data:{lv:2,atk:12}, rarity:"rare", user_id:user.id};
+        rarityClass = "rarity-rare";
+    } else if(r < 0.95) {
+        item = {item_name:"紫电宝甲", item_data:{lv:3,def:20}, rarity:"epic", user_id:user.id};
+        rarityClass = "rarity-epic";
+    } else {
+        item = {item_name:"九霄仙剑", item_data:{lv:5,atk:55}, rarity:"legend", user_id:user.id};
+        rarityClass = "rarity-legend";
+    }
+    await supabase.from('items').insert(item);
+    drawResult.innerHTML = `<div class="item-card ${rarityClass}"><p>抽到：${item.item_name}</p></div>`;
+    goldNumEl.innerText = player.gold - 10;
+    await loadBag(user);
+};
+
+async function loadBag(user) {
+    if(!user) {
+        const { data } = await supabase.auth.getUser();
+        user = data.user;
+    }
+    if(!user) return;
+    const { data:bag } = await supabase.from('items').select('*').eq('user_id', user.id).order('created_at', {ascending:false});
+    bagList.innerHTML = "";
+    if(!bag || bag.length === 0) {
+        bagList.innerHTML = "<p>背包空空如也，快去抽装备</p>";
+        return;
+    }
+    bag.forEach(it => {
+        let cls = "rarity-common";
+        if(it.rarity === "rare") cls = "rarity-rare";
+        if(it.rarity === "epic") cls = "rarity-epic";
+        if(it.rarity === "legend") cls = "rarity-legend";
+        bagList.innerHTML += `
+        <div class="item-card ${cls}">
+            <div>${it.item_name}</div>
+            <div>等级:${it.item_data.lv} 攻击:${it.item_data.atk||0} 防御:${it.item_data.def||0}</div>
+        </div>`;
+    })
+}
+btnLoadBag.onclick = ()=> loadBag();
+</script>
+</body>
+</html>
             id:user.id,
             name:randName,
             gold:100
