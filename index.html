@@ -24,37 +24,49 @@ const { createClient } = window.supabase;
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const outDom = document.getElementById("out");
 
-function log(txt){ outDom.innerText = txt; }
+function log(txt){ outDom.innerText = txt; console.log(txt); }
 
-// 新增用户
 async function addUser(){
+  try{
     const {data,err}=await supabase.from("users").insert([{
         name:"测试玩家"+Date.now(),
         gold:10
     }]).select();
     log(JSON.stringify({data,err},null,2));
+  }catch(e){
+    log("捕获异常："+e.message);
+  }
 }
 
-// 查询用户列表
 async function listUser(){
+  try{
     const {data,err}=await supabase.from("users").select("*");
     log(JSON.stringify({data,err},null,2));
+  }catch(e){
+    log("捕获异常："+e.message);
+  }
 }
 
-// 新增道具
 async function addItem(){
+  try{
     const {data,err}=await supabase.from("items").insert([{
         user_id:null,
         item_name:"测试宝剑",
         item_data:{level:1,attr:"锋利"}
     }]).select();
     log(JSON.stringify({data,err},null,2));
+  }catch(e){
+    log("捕获异常："+e.message);
+  }
 }
 
-// 查询道具列表
 async function listItem(){
+  try{
     const {data,err}=await supabase.from("items").select("*");
     log(JSON.stringify({data,err},null,2));
+  }catch(e){
+    log("捕获异常："+e.message);
+  }
 }
 </script>
 </body>
