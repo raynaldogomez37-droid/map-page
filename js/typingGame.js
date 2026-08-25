@@ -1,4 +1,3 @@
-//打字游戏核心逻辑
 const TypingGame = {
     gameRunning: false,
     hp: 100,
@@ -27,6 +26,37 @@ const TypingGame = {
         this.inputEl = document.getElementById("typingInput");
         document.getElementById("startBtn").addEventListener("click",()=>this.startGame());
         this.inputEl.addEventListener("input",(e)=>this.onInput(e.target.value));
+        this.loadSave();
+        this.updateTopUi();
+    },
+
+    save(){
+        const saveObj = {
+            hp:this.hp,
+            maxHp:this.maxHp,
+            exp:this.exp,
+            level:this.level,
+            bag:GameData.bag,
+            warehouse:GameData.warehouse,
+            wearingEquip:GameData.wearingEquip,
+            gold:GameData.gold
+        }
+        localStorage.setItem("typingSave",JSON.stringify(saveObj));
+    },
+    loadSave(){
+        const str = localStorage.getItem("typingSave");
+        if(!str) return;
+        try{
+            const d = JSON.parse(str);
+            this.hp = d.hp??100;
+            this.maxHp = d.maxHp??100;
+            this.exp = d.exp??0;
+            this.level = d.level??1;
+            GameData.bag = d.bag??[];
+            GameData.warehouse = d.warehouse??[];
+            GameData.wearingEquip = d.wearingEquip??[];
+            GameData.gold = d.gold??0;
+        }catch(e){console.log("存档读取失败")}
     },
 
     startGame(){
@@ -38,15 +68,18 @@ const TypingGame = {
         this.gameRunning = true;
         this.combo = 0;
         this.fallingWords = [];
-        this.gameArea.innerHTML = "";
+        //只清除单词，不删除输入框、开始按钮
+        const childs = Array.from(this.gameArea.children);
+        childs.forEach(el=>{
+            if(el.classList.contains("fall-word")) el.remove();
+        })
         this.inputEl.value = "";
-        this.inputEl.style.display = "block";
         this.loop();
     },
 
     stopGame(){
         this.gameRunning = false;
-        this.inputEl.style.display = "none";
+        this.save();
     },
 
     spawnWord(){
@@ -57,7 +90,7 @@ const TypingGame = {
         const left = Math.random()*80;
         div.style.left = left+"%";
         div.style.top = "0px";
-        const speed = Math.min(2 + (this.combo/15),6);
+        const speed = Math.min(1.2 + (this.combo/22),4.2);
         this.gameArea.appendChild(div);
         this.fallingWords.push({
             el:div,
@@ -69,28 +102,27 @@ const TypingGame = {
 
     loop(){
         if(!this.gameRunning) return;
-        //生成新词
-        if(Math.random() < 0.02 + this.combo*0.0015){
+        if(Math.random() < 0.012 + this.combo*0.0008){
             this.spawnWord();
         }
-        //移动单词
         for(let i=this.fallingWords.length-1;i>=0;i--){
             const w = this.fallingWords[i];
             w.top += w.speed;
             w.el.style.top = w.top+"px";
-            //落到底部，扣血
             if(w.top > this.gameArea.clientHeight){
                 this.hp -=5;
                 this.combo =0;
                 w.el.remove();
                 this.fallingWords.splice(i,1);
                 this.updateTopUi();
+                this.save();
                 if(this.hp <=0){
                     this.stopGame();
                     alert("血量归零！进入3分钟冷却！");
                     setTimeout(()=>{
                         this.hp = this.maxHp;
                         this.updateTopUi();
+                        this.save();
                     },1000*60*3)
                 }
             }
@@ -104,7 +136,6 @@ const TypingGame = {
         for(let i=0;i<this.fallingWords.length;i++){
             const w = this.fallingWords[i];
             if(w.word === inputText){
-                //输入正确
                 this.exp +=8;
                 this.combo +=1;
                 w.el.remove();
@@ -114,6 +145,7 @@ const TypingGame = {
                 this.rollDrop();
                 this.checkLevelUp();
                 this.updateTopUi();
+                this.save();
                 break;
             }
         }
@@ -122,9 +154,9 @@ const TypingGame = {
     checkComboReward(){
         if(this.combo >=12){
             this.combo =0;
-            //获得宝箱
             GameData.bag.push({type:"chest",name:"连击宝箱"});
             alert("连击12！获得宝箱存入背包！");
+            this.save();
         }
     },
 
@@ -133,7 +165,6 @@ const TypingGame = {
         if(r <0.04){
             GameData.bag.push({type:"gold",count:Math.floor(Math.random()*12)+3});
         }else if(r<0.07){
-            //随机装备
             const equipList = [
                 {name:"木剑",atk:3,hp:8},
                 {name:"布甲",atk:1,hp:14},
@@ -144,6 +175,7 @@ const TypingGame = {
         }else if(r<0.095){
             GameData.bag.push({type:"chest",name:"掉落宝箱"});
         }
+        this.save();
     },
 
     checkLevelUp(){
@@ -154,12 +186,14 @@ const TypingGame = {
             this.maxHp +=12;
             this.hp = this.maxHp;
             alert(`升级！当前等级${this.level}`);
+            this.save();
         }
     },
 
     updateTopUi(){
         document.getElementById("lvText").innerText = this.level;
-        document.getElementById("expBar").style.width = (this.exp/(this.level*60)*100)+"%";
+        const needExp = this.level *60;
+        document.getElementById("expBar").style.width = Math.min(100,(this.exp / needExp)*100)+"%";
         document.getElementById("hpText").innerText = `${this.hp}/${this.maxHp}`;
         let atk = 2;
         GameData.wearingEquip.forEach(e=>{
@@ -169,7 +203,6 @@ const TypingGame = {
     }
 }
 
-//全局游戏数据
 window.GameData = {
     bag:[],
     warehouse:[],
