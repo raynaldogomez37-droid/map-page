@@ -101,7 +101,9 @@
     padding: 14px;
     margin-bottom: 10px;
     box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    cursor: pointer;
   }
+  .member-card:active { background: #F7FAFC; }
   .member-head {
     display: flex;
     align-items: center;
@@ -183,6 +185,17 @@
     border-radius: 12px;
     margin-bottom: 12px;
     display: block;
+  }
+  .member-modal-photos {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 12px;
+  }
+  .member-modal-photos img {
+    width: calc(50% - 4px);
+    border-radius: 10px;
+    object-fit: cover;
   }
   .modal-box h2 { margin: 0 0 6px; font-size: 18px; }
   .modal-box .modal-time { font-size: 12px; color: var(--muted); margin-bottom: 14px; }
@@ -293,6 +306,8 @@ function startSearchCountdown(seconds) {
   }, 1000);
 }
 
+let memberCache = [];
+
 async function doSearch() {
   const kw = document.getElementById("searchInput").value.trim();
   const wrap = document.getElementById("memberResults");
@@ -302,19 +317,16 @@ async function doSearch() {
   list.innerHTML = '<div class="no-result">查询中...</div>';
   try {
     const members = await callRpc("search_roster_members", { p_keyword: kw });
-    if (!members || members.length === 0) {
+    memberCache = members || [];
+    if (memberCache.length === 0) {
       list.innerHTML = '<div class="no-result">没有找到匹配的成员</div>';
     } else {
-      list.innerHTML = members.map(m => {
-        const photos = (m.photos || []).filter(Boolean);
-        const photosHtml = photos.length
-          ? '<div class="member-photos">' + photos.map(p => '<img src="' + p + '" loading="lazy">').join("") + '</div>'
-          : "";
-        return '<div class="member-card">'
-          + '<div class="member-head"><span class="name">' + escapeHtml(m.name) + '</span>'
+      list.innerHTML = memberCache.map((m, idx) => {
+        return '<div class="member-card" onclick="openMember(' + idx + ')">'
+          + '<div class="member-head"><span class="name">' + escapeHtml(m.name)
+          + (m.id_card ? '　' + escapeHtml(m.id_card) : '') + '</span>'
           + (m.age ? '<span class="age">' + m.age + '岁</span>' : '') + '</div>'
           + (m.bio ? '<div class="member-bio">' + escapeHtml(m.bio) + '</div>' : '')
-          + photosHtml
           + '</div>';
       }).join("");
     }
@@ -372,6 +384,22 @@ function closeNews() {
 document.getElementById("modalMask").addEventListener("click", function(e) {
   if (e.target === this) closeNews();
 });
+
+function openMember(idx) {
+  const m = memberCache[idx];
+  if (!m) return;
+  const photos = (m.photos || []).filter(Boolean);
+  const box = document.getElementById("modalBox");
+  box.innerHTML = (photos[0] ? '<img class="cover" src="' + photos[0] + '">' : '')
+    + '<h2>' + escapeHtml(m.name) + (m.age ? '　' + m.age + '岁' : '') + '</h2>'
+    + (m.id_card ? '<div class="modal-time">证件号：' + escapeHtml(m.id_card) + '</div>' : '')
+    + '<div class="modal-content">' + escapeHtml(m.bio || "暂无简介") + '</div>'
+    + (photos.length > 1
+        ? '<div class="member-modal-photos">' + photos.slice(1).map(p => '<img src="' + p + '">').join("") + '</div>'
+        : '')
+    + '<button class="modal-close" onclick="closeNews()">关闭</button>';
+  document.getElementById("modalMask").classList.add("show");
+}
 
 loadNews();
 </script>
