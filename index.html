@@ -105,18 +105,19 @@
   }
   .member-card:active { background: #F7FAFC; }
   .member-head {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-bottom: 8px;
+    display: block;
   }
-  .member-head .name { font-size: 16px; font-weight: 700; }
-  .member-head .age {
-    font-size: 11px;
-    color: var(--muted);
-    background: #EDF2F7;
-    padding: 2px 8px;
-    border-radius: 10px;
+  .member-head .name {
+    font-size: 15px;
+    font-weight: 700;
+    word-break: break-all;
+    line-height: 1.5;
+  }
+  .member-more {
+    font-size: 12px;
+    color: var(--primary);
+    margin-top: 6px;
+    text-align: right;
   }
   .member-bio { font-size: 13px; color: #4A5568; line-height: 1.5; margin-bottom: 8px; }
   .member-photos { display: flex; gap: 6px; flex-wrap: wrap; }
@@ -324,9 +325,8 @@ async function doSearch() {
       list.innerHTML = memberCache.map((m, idx) => {
         return '<div class="member-card" onclick="openMember(' + idx + ')">'
           + '<div class="member-head"><span class="name">' + escapeHtml(m.name)
-          + (m.id_card ? '　' + escapeHtml(m.id_card) : '') + '</span>'
-          + (m.age ? '<span class="age">' + m.age + '岁</span>' : '') + '</div>'
-          + (m.bio ? '<div class="member-bio">' + escapeHtml(m.bio) + '</div>' : '')
+          + (m.id_card ? '　' + escapeHtml(m.id_card) : '') + '</span></div>'
+          + '<div class="member-more">点击查看详情 →</div>'
           + '</div>';
       }).join("");
     }
