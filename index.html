@@ -3,365 +3,352 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<meta http-equiv="cache-control" content="no-cache, no-store, must-revalidate" />
-<meta http-equiv="pragma" content="no-cache" />
-<meta http-equiv="expires" content="0" />
-<title>打字修仙</title>
+<title>轮滑资讯平台</title>
 <style>
-*{
-    margin:0;
-    padding:0;
-    box-sizing:border-box;
-}
-html,body{
-    background:#000000;
-    width:100%;
-    height:100%;
-    font-family:system-ui,-apple-system,Segoe UI;
-}
-.hide-view{display:none !important;}
+  :root {
+    --primary: #2563EB;
+    --primary-dark: #1D4ED8;
+    --bg: #F0F4F8;
+    --card: #FFFFFF;
+    --text: #1A202C;
+    --muted: #718096;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+  }
+  header {
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    color: #fff;
+    padding: 28px 16px 40px;
+    text-align: center;
+    border-bottom-left-radius: 24px;
+    border-bottom-right-radius: 24px;
+  }
+  header h1 {
+    margin: 0;
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: 1px;
+  }
+  header p {
+    margin: 6px 0 0;
+    font-size: 12px;
+    opacity: 0.85;
+  }
+  .container {
+    max-width: 640px;
+    margin: -24px auto 0;
+    padding: 0 16px 40px;
+  }
+  .search-box {
+    background: var(--card);
+    border-radius: 16px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .search-box svg { flex-shrink: 0; color: var(--muted); }
+  .search-box input {
+    flex: 1;
+    border: none;
+    outline: none;
+    font-size: 15px;
+    padding: 8px 0;
+    background: transparent;
+    color: var(--text);
+  }
+  .search-box button {
+    background: var(--primary);
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    padding: 9px 18px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  .search-box button:active { background: var(--primary-dark); }
 
-/* -------- 启动闪屏 -------- */
-#viewSplash{
-    position:absolute;
-    top:0;left:0;right:0;bottom:0;
-    background:#050508;
-    display:flex;
-    justify-content:center;
-    align-items:center;
-    z-index:999;
-}
-.splash-inner{
-    text-align:center;
-    width:100%;
-}
-.logo{
-    width: min(70vw, 300px);
-    height:auto;
-}
-.tip-splash{
-    color:#b4b8c3;
-    margin-top:32px;
-    font-size:16px;
-}
-.btn-manual{
-    margin-top:48px;
-    padding:14px 36px;
-    background:#1b2b48;
-    color:#e2e8f0;
-    border:1px solid #475569;
-    border-radius:12px;
-    font-size:16px;
-    display:none;
-}
+  .section-title {
+    margin: 26px 0 12px;
+    font-size: 16px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .section-title::before {
+    content: "";
+    width: 4px; height: 16px;
+    background: var(--primary);
+    border-radius: 2px;
+    display: inline-block;
+  }
 
-/* -------- 登录页面 -------- */
-#viewLogin{
-    min-height:100vh;
-    display:flex;
-    justify-content:center;
-    align-items:center;
-    padding:20px 16px;
-    background:#0b101b;
-}
-.login-box{
-    width:100%;
-    max-width:420px;
-    background:#ffffff;
-    color:#000000;
-    border-radius:18px;
-    padding:36px 28px;
-    border:1px solid #cbd5e1;
-    box-shadow: 0 8px 30px #00000070;
-}
-.login-box h2{
-    text-align:center;
-    margin-bottom:32px;
-    font-size:26px;
-    color:#1e293b;
-}
-.tip {color:#475569; margin:12px 0;font-size:14px}
-.error {color:#dc2626}
-input {
-    width:100%;
-    padding:14px 16px;
-    margin:10px 0;
-    border-radius:10px;
-    border:1px solid #94a3b8;
-    background:#f8fafc;
-    color:#000;
-    font-size:16px;
-}
-button {
-    width:100%;
-    padding:14px;
-    margin:10px 0;
-    border:none;
-    border-radius:10px;
-    background:#2563eb;
-    color:#fff;
-    font-size:16px;
-    font-weight:500;
-}
-button:disabled {background:#64748b;opacity:0.8;cursor:not-allowed;}
-button.danger {background:#b91c1c}
-button.gold {background:#ca8a04}
+  #memberResults { display: none; }
+  #memberResults.show { display: block; }
 
-/* -------- 打字游戏主界面 -------- */
-#viewGame{
-    width:100%;
-    height:100vh;
-    display:flex;
-    flex-direction:column;
-    background:#0b101b;
-    color:#e2e8f0;
-}
-.top-bar{
-    padding:14px 12px;
-    background:#141c30;
-    display:flex;
-    align-items:center;
-    gap:10px;
-    box-shadow:0 2px 12px #00000060;
-}
-#avatarBox{
-    width:48px;
-    height:48px;
-    border-radius:50%;
-    background:#2563eb;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    font-weight:bold;
-    font-size:17px;
-    box-shadow:0 0 10px #3b82f670;
-}
-.top-middle{
-    flex:1;
-}
-.exp-bg{
-    width:100%;
-    height:10px;
-    background:#1e293b;
-    border-radius:6px;
-    margin-top:6px;
-}
-#expBar{
-    height:100%;
-    background:linear-gradient(90deg,#16a34a,#22c55e);
-    width:0%;
-    border-radius:6px;
-}
-.top-right{
-    text-align:right;
-    font-size:14px;
-    line-height:1.5;
-}
-#settingBtn{
-    margin-left:6px;
-    padding:6px 10px;
-    background:#27344d;
-    border:none;
-    color:#e2e8f0;
-    border-radius:8px;
-    width:auto;
-}
+  .member-card {
+    background: var(--card);
+    border-radius: 14px;
+    padding: 14px;
+    margin-bottom: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  }
+  .member-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+  }
+  .member-head .name { font-size: 16px; font-weight: 700; }
+  .member-head .age {
+    font-size: 11px;
+    color: var(--muted);
+    background: #EDF2F7;
+    padding: 2px 8px;
+    border-radius: 10px;
+  }
+  .member-bio { font-size: 13px; color: #4A5568; line-height: 1.5; margin-bottom: 8px; }
+  .member-photos { display: flex; gap: 6px; flex-wrap: wrap; }
+  .member-photos img {
+    width: 64px; height: 64px;
+    object-fit: cover;
+    border-radius: 8px;
+    border: 1px solid #E2E8F0;
+  }
+  .no-result { color: var(--muted); font-size: 13px; text-align: center; padding: 16px 0; }
 
-#gameArea{
-    flex:1;
-    position:relative;
-    background:#0f172a;
-    overflow:hidden;
-}
+  .news-item {
+    background: var(--card);
+    border-radius: 14px;
+    padding: 14px 16px;
+    margin-bottom: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  .news-item:active { background: #F7FAFC; }
+  .news-item .news-title {
+    font-size: 15px;
+    font-weight: 600;
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .badge-new {
+    background: #E53E3E;
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 8px;
+    flex-shrink: 0;
+  }
+  .news-time { font-size: 11px; color: var(--muted); flex-shrink: 0; }
+  .empty-tip { color: var(--muted); font-size: 13px; text-align: center; padding: 30px 0; }
 
-#startBtn{
-    position:absolute;
-    top:50%;
-    left:50%;
-    transform:translate(-50%,-50%);
-    padding:16px 40px;
-    font-size:19px;
-    background:linear-gradient(135deg,#2563eb,#1d4ed8);
-    color:#fff;
-    border:none;
-    border-radius:14px;
-    box-shadow:0 6px 20px #2563eb50;
-    z-index:10;
-}
-
-#typingInput{
-    position:absolute;
-    bottom:18px;
-    left:50%;
-    transform:translateX(-50%);
-    width:86%;
-    padding:12px 16px;
-    font-size:17px;
-    border-radius:12px;
-    border:none;
-    background:#1e293b;
-    color:#ffffff;
-    z-index:20;
-}
-
-.fall-word{
-    position:absolute;
-    background-color:#1e3a60dd;
-    backdrop-filter:blur(4px);
-    padding:10px 12px;
-    border-radius:10px;
-    min-width:110px;
-    text-align:center;
-    box-shadow:0 4px 14px #00000050;
-    border:1px solid #3b82f640;
-}
-.desc{
-    font-size:13px;
-    color:#a5b4fc;
-    margin-top:6px;
-}
-
-.bottom-nav{
-    display:flex;
-    background:#141c30;
-    box-shadow:0 -2px 12px #00000060;
-}
-.bottom-nav button{
-    flex:1;
-    padding:16px 0;
-    background:none;
-    border:none;
-    color:#cbd5e1;
-    font-size:14px;
-}
-
-.panel-wrap{
-    position:fixed;
-    top:0;
-    left:0;
-    width:100%;
-    height:100%;
-    background:rgba(0,0,0,0.88);
-    display:none;
-    padding:18px 14px;
-    z-index:99;
-}
-.panel-content{
-    background:#141c30;
-    border-radius:16px;
-    padding:18px;
-    height:88vh;
-    overflow-y:auto;
-    box-shadow:0 8px 30px #00000080;
-}
-.panel-close{
-    padding:8px 12px;
-    background:#dc2626;
-    border:none;
-    color:white;
-    border-radius:8px;
-    margin-bottom:14px;
-    width:auto;
-}
-.item-row{
-    padding:12px 8px;
-    border-bottom:1px solid #27344d;
-    font-size:15px;
-}
+  .modal-mask {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  .modal-mask.show { display: flex; }
+  .modal-box {
+    background: #fff;
+    border-radius: 18px;
+    max-width: 480px;
+    width: 100%;
+    max-height: 80vh;
+    overflow-y: auto;
+    padding: 20px;
+  }
+  .modal-box img.cover {
+    width: 100%;
+    border-radius: 12px;
+    margin-bottom: 12px;
+    display: block;
+  }
+  .modal-box h2 { margin: 0 0 6px; font-size: 18px; }
+  .modal-box .modal-time { font-size: 12px; color: var(--muted); margin-bottom: 14px; }
+  .modal-box .modal-content { font-size: 14px; line-height: 1.7; color: #2D3748; white-space: pre-wrap; }
+  .modal-box .modal-link {
+    display: inline-block;
+    margin-top: 16px;
+    background: var(--primary);
+    color: #fff;
+    text-decoration: none;
+    padding: 10px 18px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
+  }
+  .modal-close {
+    display: block;
+    margin: 18px auto 0;
+    background: #EDF2F7;
+    color: #4A5568;
+    border: none;
+    padding: 10px 24px;
+    border-radius: 10px;
+    font-size: 14px;
+    cursor: pointer;
+  }
 </style>
 </head>
 <body>
 
-<div id="viewSplash">
-    <div class="splash-inner">
-        <img class="logo" src="https://cdn.harmony5.cn/square/5c5a222b-2dd3-4ef0-8c7c-bdd10afce405.jpg" alt="游戏logo">
-        <div class="tip-splash">正在启动游戏...</div>
-        <button id="btnManual" class="btn-manual">点击进入游戏</button>
-    </div>
+<header>
+  <h1>轮滑资讯平台</h1>
+  <p>成员查询 · 近期赛事与资讯</p>
+</header>
+
+<div class="container">
+  <div class="search-box">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <circle cx="11" cy="11" r="7"></circle>
+      <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+    </svg>
+    <input id="searchInput" type="text" placeholder="输入姓名或证件号查询成员" />
+    <button onclick="doSearch()">查询</button>
+  </div>
+
+  <div id="memberResults">
+    <div class="section-title">查询结果</div>
+    <div id="memberList"></div>
+  </div>
+
+  <div class="section-title">近期赛事</div>
+  <div id="newsList"><div class="empty-tip">加载中...</div></div>
 </div>
 
-<div id="viewLogin" class="hide-view">
-    <div class="login-box">
-        <h2>打字修仙</h2>
-        <input id="uname" placeholder="用户名">
-        <input id="pwd" type="password" placeholder="密码">
-        <div class="tip" id="authTip"></div>
-        <button id="btnRegister">注册账号</button>
-        <button id="btnLogin">登录账号</button>
-    </div>
+<div class="modal-mask" id="modalMask">
+  <div class="modal-box" id="modalBox"></div>
 </div>
 
-<div id="viewGame" class="hide-view">
-    <div class="top-bar">
-        <div id="avatarBox">头像</div>
-        <div class="top-middle">
-            <div>等级:<span id="lvText">1</span></div>
-            <div class="exp-bg"><div id="expBar"></div></div>
-        </div>
-        <div class="top-right">
-            <div>攻击:<span id="atkText">2</span></div>
-            <div>血量:<span id="hpText">100/100</span></div>
-        </div>
-        <button id="settingBtn">设置</button>
-    </div>
+<script>
+const SUPABASE_URL = "https://akbkupgqscgzokwjnllr.supabase.co";
+const SUPABASE_KEY = "sb_publishable_rnKCzXAh4OL1DIDIrTUf4A_JLnjfbWr";
 
-    <div id="gameArea">
-        <button id="startBtn">开始训练</button>
-        <input id="typingInput" placeholder="在这里输入飘落的英文单词">
-    </div>
+async function callRpc(fn, params) {
+  const resp = await fetch(SUPABASE_URL + "/rest/v1/rpc/" + fn, {
+    method: "POST",
+    headers: {
+      "apikey": SUPABASE_KEY,
+      "Authorization": "Bearer " + SUPABASE_KEY,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(params || {})
+  });
+  if (!resp.ok) throw new Error("请求失败：" + resp.status);
+  return await resp.json();
+}
 
-    <div class="bottom-nav">
-        <button id="btnBag">背包</button>
-        <button id="btnWare">仓库</button>
-        <button id="btnAttr">个人属性</button>
-        <button id="btnHome">返回主页</button>
-    </div>
+function escapeHtml(s) {
+  if (!s) return "";
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
 
-    <div class="panel-wrap" id="bagPanel">
-        <div class="panel-content">
-            <button class="panel-close">关闭</button>
-            <h3>背包</h3>
-            <div id="bagList"></div>
-        </div>
-    </div>
-    <div class="panel-wrap" id="warePanel">
-        <div class="panel-content">
-            <button class="panel-close">关闭</button>
-            <h3>仓库</h3>
-            <div id="wareList"></div>
-        </div>
-    </div>
-    <div class="panel-wrap" id="attrPanel">
-        <div class="panel-content">
-            <button class="panel-close">关闭</button>
-            <h3>个人属性</h3>
-            <div id="attrText"></div>
-        </div>
-    </div>
-    <div class="panel-wrap" id="equipPanel">
-        <div class="panel-content">
-            <button class="panel-close">关闭</button>
-            <h3>已穿戴装备</h3>
-            <div id="wearList"></div>
-        </div>
-    </div>
-    <div class="panel-wrap" id="settingPanel">
-        <div class="panel-content">
-            <button class="panel-close">关闭</button>
-            <h3>设置</h3>
-            <br>
-            <button id="logoutBtn">退出账号</button>
-        </div>
-    </div>
-</div>
+function formatTime(iso) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  const pad = n => String(n).padStart(2, "0");
+  return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()) + " " + pad(d.getHours()) + ":" + pad(d.getMinutes());
+}
 
-<script src="./js/config.js"></script>
-<script src="./js/view.js"></script>
-<script src="./js/login.js"></script>
-<script src="./js/gameCore.js"></script>
-<script src="./js/draw.js"></script>
-<script src="./js/bag.js"></script>
-<script src="./js/uiPanel.js"></script>
-<script src="./js/typingGame.js"></script>
+async function doSearch() {
+  const kw = document.getElementById("searchInput").value.trim();
+  const wrap = document.getElementById("memberResults");
+  const list = document.getElementById("memberList");
+  if (!kw) { wrap.classList.remove("show"); return; }
+  wrap.classList.add("show");
+  list.innerHTML = '<div class="no-result">查询中...</div>';
+  try {
+    const members = await callRpc("search_roster_members", { p_keyword: kw });
+    if (!members || members.length === 0) {
+      list.innerHTML = '<div class="no-result">没有找到匹配的成员</div>';
+      return;
+    }
+    list.innerHTML = members.map(m => {
+      const photos = (m.photos || []).filter(Boolean);
+      const photosHtml = photos.length
+        ? '<div class="member-photos">' + photos.map(p => '<img src="' + p + '" loading="lazy">').join("") + '</div>'
+        : "";
+      return '<div class="member-card">'
+        + '<div class="member-head"><span class="name">' + escapeHtml(m.name) + '</span>'
+        + (m.age ? '<span class="age">' + m.age + '岁</span>' : '') + '</div>'
+        + (m.bio ? '<div class="member-bio">' + escapeHtml(m.bio) + '</div>' : '')
+        + photosHtml
+        + '</div>';
+    }).join("");
+  } catch (e) {
+    list.innerHTML = '<div class="no-result">查询失败，请稍后重试</div>';
+  }
+}
+document.getElementById("searchInput").addEventListener("keydown", function(e) {
+  if (e.key === "Enter") doSearch();
+});
+
+let newsCache = [];
+
+async function loadNews() {
+  const box = document.getElementById("newsList");
+  try {
+    const items = await callRpc("get_public_news", {});
+    newsCache = items || [];
+    if (newsCache.length === 0) {
+      box.innerHTML = '<div class="empty-tip">暂时没有最新资讯</div>';
+      return;
+    }
+    const now = Date.now();
+    const NEW_WINDOW_MS = 3 * 24 * 60 * 60 * 1000; // 3天内发布的都算"新"
+    box.innerHTML = newsCache.map((it, idx) => {
+      const isNew = (now - new Date(it.published_at).getTime()) < NEW_WINDOW_MS;
+      return '<div class="news-item" onclick="openNews(' + idx + ')">'
+        + '<div class="news-title">' + (isNew ? '<span class="badge-new">新</span>' : '') + escapeHtml(it.title) + '</div>'
+        + '<div class="news-time">' + formatTime(it.published_at) + '</div>'
+        + '</div>';
+    }).join("");
+  } catch (e) {
+    box.innerHTML = '<div class="empty-tip">加载失败，请刷新页面重试</div>';
+  }
+}
+
+function openNews(idx) {
+  const it = newsCache[idx];
+  if (!it) return;
+  const box = document.getElementById("modalBox");
+  box.innerHTML = (it.cover_image ? '<img class="cover" src="' + it.cover_image + '">' : '')
+    + '<h2>' + escapeHtml(it.title) + '</h2>'
+    + '<div class="modal-time">' + formatTime(it.published_at) + '</div>'
+    + '<div class="modal-content">' + escapeHtml(it.content || "") + '</div>'
+    + (it.link_url ? '<a class="modal-link" href="' + it.link_url + '" target="_blank" rel="noopener">查看相关链接 →</a>' : '')
+    + '<button class="modal-close" onclick="closeNews()">关闭</button>';
+  document.getElementById("modalMask").classList.add("show");
+}
+function closeNews() {
+  document.getElementById("modalMask").classList.remove("show");
+}
+document.getElementById("modalMask").addEventListener("click", function(e) {
+  if (e.target === this) closeNews();
+});
+
+loadNews();
+</script>
 </body>
 </html>
