@@ -229,7 +229,7 @@
   </div>
 
   <div id="memberResults">
-    <div class="section-title">查询结果</div>
+    <div class="section-title">查询结果 <span id="searchCountdown" style="font-size:11px;color:var(--muted);font-weight:400;"></span></div>
     <div id="memberList"></div>
   </div>
 
@@ -271,6 +271,28 @@ function formatTime(iso) {
   return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()) + " " + pad(d.getHours()) + ":" + pad(d.getMinutes());
 }
 
+function startSearchCountdown(seconds) {
+  const wrap = document.getElementById("memberResults");
+  const label = document.getElementById("searchCountdown");
+  if (window.__searchCountdownTimer) clearInterval(window.__searchCountdownTimer);
+  let left = seconds;
+  const render = () => {
+    const m = Math.floor(left / 60), s = left % 60;
+    label.textContent = "（" + m + ":" + String(s).padStart(2, "0") + " 后自动收起）";
+  };
+  render();
+  window.__searchCountdownTimer = setInterval(function() {
+    left--;
+    if (left <= 0) {
+      clearInterval(window.__searchCountdownTimer);
+      wrap.classList.remove("show");
+      label.textContent = "";
+      return;
+    }
+    render();
+  }, 1000);
+}
+
 async function doSearch() {
   const kw = document.getElementById("searchInput").value.trim();
   const wrap = document.getElementById("memberResults");
@@ -282,20 +304,23 @@ async function doSearch() {
     const members = await callRpc("search_roster_members", { p_keyword: kw });
     if (!members || members.length === 0) {
       list.innerHTML = '<div class="no-result">没有找到匹配的成员</div>';
-      return;
+    } else {
+      list.innerHTML = members.map(m => {
+        const photos = (m.photos || []).filter(Boolean);
+        const photosHtml = photos.length
+          ? '<div class="member-photos">' + photos.map(p => '<img src="' + p + '" loading="lazy">').join("") + '</div>'
+          : "";
+        return '<div class="member-card">'
+          + '<div class="member-head"><span class="name">' + escapeHtml(m.name) + '</span>'
+          + (m.age ? '<span class="age">' + m.age + '岁</span>' : '') + '</div>'
+          + (m.bio ? '<div class="member-bio">' + escapeHtml(m.bio) + '</div>' : '')
+          + photosHtml
+          + '</div>';
+      }).join("");
     }
-    list.innerHTML = members.map(m => {
-      const photos = (m.photos || []).filter(Boolean);
-      const photosHtml = photos.length
-        ? '<div class="member-photos">' + photos.map(p => '<img src="' + p + '" loading="lazy">').join("") + '</div>'
-        : "";
-      return '<div class="member-card">'
-        + '<div class="member-head"><span class="name">' + escapeHtml(m.name) + '</span>'
-        + (m.age ? '<span class="age">' + m.age + '岁</span>' : '') + '</div>'
-        + (m.bio ? '<div class="member-bio">' + escapeHtml(m.bio) + '</div>' : '')
-        + photosHtml
-        + '</div>';
-    }).join("");
+    // 查询完输入框清空，结果显示2分钟倒计时后自动收起
+    document.getElementById("searchInput").value = "";
+    startSearchCountdown(120);
   } catch (e) {
     list.innerHTML = '<div class="no-result">查询失败，请稍后重试</div>';
   }
