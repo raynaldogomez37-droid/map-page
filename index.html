@@ -105,7 +105,10 @@
   }
   .member-card:active { background: #F7FAFC; }
   .member-head {
-    display: block;
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 10px;
   }
   .member-head .name {
     font-size: 15px;
@@ -116,8 +119,8 @@
   .member-more {
     font-size: 12px;
     color: var(--primary);
-    margin-top: 6px;
-    text-align: right;
+    flex-shrink: 0;
+    white-space: nowrap;
   }
   .member-bio { font-size: 13px; color: #4A5568; line-height: 1.5; margin-bottom: 8px; }
   .member-photos { display: flex; gap: 6px; flex-wrap: wrap; }
@@ -189,14 +192,15 @@
   }
   .member-modal-photos {
     display: flex;
-    flex-wrap: wrap;
+    flex-direction: column;
     gap: 8px;
     margin-top: 12px;
   }
   .member-modal-photos img {
-    width: calc(50% - 4px);
+    width: 100%;
     border-radius: 10px;
     object-fit: cover;
+    display: block;
   }
   .modal-box h2 { margin: 0 0 6px; font-size: 18px; }
   .modal-box .modal-time { font-size: 12px; color: var(--muted); margin-bottom: 14px; }
@@ -324,9 +328,10 @@ async function doSearch() {
     } else {
       list.innerHTML = memberCache.map((m, idx) => {
         return '<div class="member-card" onclick="openMember(' + idx + ')">'
-          + '<div class="member-head"><span class="name">' + escapeHtml(m.name)
-          + (m.id_card ? '　' + escapeHtml(m.id_card) : '') + '</span></div>'
-          + '<div class="member-more">点击查看详情 →</div>'
+          + '<div class="member-head">'
+          + '<span class="name">' + escapeHtml(m.name) + (m.id_card ? '　' + escapeHtml(m.id_card) : '') + '</span>'
+          + '<span class="member-more">点击查看详情 →</span>'
+          + '</div>'
           + '</div>';
       }).join("");
     }
@@ -374,7 +379,7 @@ function openNews(idx) {
     + '<h2>' + escapeHtml(it.title) + '</h2>'
     + '<div class="modal-time">' + formatTime(it.published_at) + '</div>'
     + '<div class="modal-content">' + escapeHtml(it.content || "") + '</div>'
-    + (it.link_url ? '<a class="modal-link" href="' + it.link_url + '" target="_blank" rel="noopener">查看相关链接 →</a>' : '')
+    + (it.link_url ? '<a class="modal-link" href="' + normalizeUrl(it.link_url) + '" target="_blank" rel="noopener">查看相关链接 →</a>' : '')
     + '<button class="modal-close" onclick="closeNews()">关闭</button>';
   document.getElementById("modalMask").classList.add("show");
 }
@@ -385,17 +390,23 @@ document.getElementById("modalMask").addEventListener("click", function(e) {
   if (e.target === this) closeNews();
 });
 
+function normalizeUrl(url) {
+  if (!url) return "";
+  url = url.trim();
+  if (/^https?:\/\//i.test(url)) return url;
+  return "https://" + url;
+}
+
 function openMember(idx) {
   const m = memberCache[idx];
   if (!m) return;
   const photos = (m.photos || []).filter(Boolean);
   const box = document.getElementById("modalBox");
-  box.innerHTML = (photos[0] ? '<img class="cover" src="' + photos[0] + '">' : '')
-    + '<h2>' + escapeHtml(m.name) + (m.age ? '　' + m.age + '岁' : '') + '</h2>'
+  box.innerHTML = '<h2>' + escapeHtml(m.name) + (m.age ? '　' + m.age + '岁' : '') + '</h2>'
     + (m.id_card ? '<div class="modal-time">证件号：' + escapeHtml(m.id_card) + '</div>' : '')
     + '<div class="modal-content">' + escapeHtml(m.bio || "暂无简介") + '</div>'
-    + (photos.length > 1
-        ? '<div class="member-modal-photos">' + photos.slice(1).map(p => '<img src="' + p + '">').join("") + '</div>'
+    + (photos.length > 0
+        ? '<div class="member-modal-photos">' + photos.map(p => '<img src="' + p + '">').join("") + '</div>'
         : '')
     + '<button class="modal-close" onclick="closeNews()">关闭</button>';
   document.getElementById("modalMask").classList.add("show");
