@@ -227,13 +227,25 @@
     font-size: 14px;
     cursor: pointer;
   }
+
+/* ---------- 赛事与资讯搜索 ---------- */
+.news-search{display:flex;align-items:center;gap:10px;margin:0 0 8px}
+.ns-box{flex:1;display:flex;align-items:center;gap:8px;background:#fff;border:1.5px solid #D6DCE6;border-radius:12px;padding:8px 10px;color:#2563EB}
+.ns-box:focus-within{border-color:#2563EB;box-shadow:0 0 0 3px rgba(37,99,235,.12)}
+.ns-box input{flex:1;border:none;outline:none;font-size:14px;background:transparent;color:#222;min-width:0}
+.ns-clear{display:none;width:18px;height:18px;border-radius:9px;background:#BDBDBD;color:#fff;font-size:13px;line-height:18px;text-align:center;cursor:pointer}
+.ns-open{white-space:nowrap;font-size:13px;color:#555;display:flex;align-items:center;gap:4px;cursor:pointer}
+.ns-count{font-size:12px;color:#888;margin:0 2px 8px;min-height:14px}
+.ns-count b{color:#2563EB}
+  .nt{flex:1;min-width:0}
+mark{background:#FFEB3B;color:inherit;border-radius:3px;padding:0 1px}
 </style>
 </head>
 <body>
 
 <header>
   <h1>轮滑资讯平台</h1>
-  <p>成员查询 · 近期赛事与资讯</p>
+  <p>成员查询 · 赛事与资讯</p>
 </header>
 
 <div class="container">
@@ -251,7 +263,18 @@
     <div id="memberList"></div>
   </div>
 
-  <div class="section-title">近期赛事</div>
+  <div class="section-title">赛事与资讯</div>
+  <div class="news-search">
+    <div class="ns-box">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+      </svg>
+      <input id="newsSearch" type="text" placeholder="搜索地区、项目、关键字，如：广州、广州比赛" />
+      <span id="newsClear" class="ns-clear" title="清空">×</span>
+    </div>
+    <label class="ns-open"><input type="checkbox" id="onlyOpen"> 只看未结束</label>
+  </div>
+  <div id="newsCount" class="ns-count"></div>
   <div id="newsList"><div class="empty-tip">加载中...</div></div>
 </div>
 
@@ -347,32 +370,115 @@ document.getElementById("searchInput").addEventListener("keydown", function(e) {
 });
 
 let newsCache = [];
+let newsView = [];   // 当前显示的（搜索筛选后的）
 
 async function loadNews() {
   const box = document.getElementById("newsList");
   try {
-    const items = await callRpc("get_public_news", {});
-    newsCache = items || [];
-    if (newsCache.length === 0) {
-      box.innerHTML = '<div class="empty-tip">暂时没有最新资讯</div>';
-      return;
+    let items;
+    try {
+      items = await callRpc("get_public_news_v2", {});   // 带隐藏的定位标签、起止日期（只用来搜索，不显示）
+    } catch (e) {
+      items = await callRpc("get_public_news", {});
     }
-    const now = Date.now();
-    const NEW_WINDOW_MS = 3 * 24 * 60 * 60 * 1000; // 3天内发布的都算"新"
-    box.innerHTML = newsCache.map((it, idx) => {
-      const isNew = (now - new Date(it.published_at).getTime()) < NEW_WINDOW_MS;
-      return '<div class="news-item" onclick="openNews(' + idx + ')">'
-        + '<div class="news-title">' + (isNew ? '<span class="badge-new">新</span>' : '') + escapeHtml(it.title) + '</div>'
-        + '<div class="news-time">' + formatTime(it.published_at) + '</div>'
-        + '</div>';
-    }).join("");
+    newsCache = items || [];
+    renderNews();
   } catch (e) {
     box.innerHTML = '<div class="empty-tip">加载失败，请刷新页面重试</div>';
   }
 }
 
+// 搜索用的"没有实际意义"的词：输入"广州比赛"时，去掉"比赛"只按"广州"找
+const GENERIC_WORDS = ["比赛", "赛事", "活动", "资讯", "消息", "通知", "的", "有", "什么", "最近", "近期"];
+
+function splitTags(t) {
+  return (t || "").split(/[、,，;；\s\/|]+/).map(x => x.trim()).filter(Boolean);
+}
+
+/** 一个关键词是否命中这条资讯：标题、正文、隐藏标签包含它；或者它包含某个标签（如"广州比赛"包含"广州"） */
+function tokenHit(it, tok) {
+  const tags = splitTags(it.tags);
+  const hay = ((it.title || "") + " " + (it.content || "") + " " + (it.tags || "")).toLowerCase();
+  const t = tok.toLowerCase();
+  if (hay.indexOf(t) >= 0) return true;
+  if (tags.some(tag => tag.length >= 2 && t.indexOf(tag.toLowerCase()) >= 0)) return true;
+  let core = tok;
+  GENERIC_WORDS.forEach(w => { core = core.split(w).join(""); });
+  core = core.trim().toLowerCase();
+  if (core.length > 0 && core !== t && hay.indexOf(core) >= 0) return true;
+  // "10月""2026-10"这类：落在资讯的起止日期里也算
+  const mm = tok.match(/^(?:(\d{4})[-年.\/])?(\d{1,2})月?$/);
+  if (mm && (it.start_date || it.end_date)) {
+    const y = mm[1] ? parseInt(mm[1]) : new Date().getFullYear();
+    const m = parseInt(mm[2]);
+    if (m >= 1 && m <= 12) {
+      const first = new Date(y, m - 1, 1), last = new Date(y, m, 0);
+      const s = it.start_date ? new Date(it.start_date) : new Date(it.end_date);
+      const e = it.end_date ? new Date(it.end_date) : s;
+      if (s <= last && e >= first) return true;
+    }
+  }
+  return false;
+}
+
+function isOpen(it) {   // 还没结束：没填结束日期，或者结束日期还没过
+  if (!it.end_date) return true;
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  return new Date(it.end_date + "T00:00:00") >= today;
+}
+
+function highlight(text, toks) {
+  let html = escapeHtml(text);
+  toks.forEach(t => {
+    if (!t) return;
+    const safe = escapeHtml(t).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    html = html.replace(new RegExp(safe, "gi"), m => "<mark>" + m + "</mark>");
+  });
+  return html;
+}
+
+function renderNews() {
+  const box = document.getElementById("newsList");
+  const kw = document.getElementById("newsSearch").value.trim();
+  const onlyOpen = document.getElementById("onlyOpen").checked;
+  document.getElementById("newsClear").style.display = kw ? "inline-block" : "none";
+  const toks = kw.split(/[\s,，、]+/).filter(Boolean);
+  newsView = newsCache.filter(it => (!onlyOpen || isOpen(it)) && toks.every(t => tokenHit(it, t)));
+  const countEl = document.getElementById("newsCount");
+  if (kw || onlyOpen) {
+    countEl.innerHTML = newsView.length ? '找到 <b>' + newsView.length + '</b> 条' : '';
+  } else {
+    countEl.innerHTML = '';
+  }
+  if (newsCache.length === 0) {
+    box.innerHTML = '<div class="empty-tip">暂时没有最新资讯</div>';
+    return;
+  }
+  if (newsView.length === 0) {
+    box.innerHTML = '<div class="empty-tip">没有找到“' + escapeHtml(kw) + '”相关的赛事和资讯，换个关键字试试</div>';
+    return;
+  }
+  const now = Date.now();
+  const NEW_WINDOW_MS = 24 * 60 * 60 * 1000; // 发布后 24 小时内显示"新"
+  const hiToks = toks.map(t => { let c = t; GENERIC_WORDS.forEach(w => { c = c.split(w).join(""); }); return c || t; });
+  box.innerHTML = newsView.map((it, idx) => {
+    const isNew = (now - new Date(it.published_at).getTime()) < NEW_WINDOW_MS;
+    return '<div class="news-item" onclick="openNews(' + idx + ')">'
+      + '<div class="news-title">' + (isNew ? '<span class="badge-new">新</span>' : '') + '<span class="nt">' + (kw ? highlight(it.title, hiToks) : escapeHtml(it.title)) + '</span></div>'
+      + '<div class="news-time">' + formatTime(it.published_at) + '</div>'
+      + '</div>';
+  }).join("");
+}
+
+document.getElementById("newsSearch").addEventListener("input", renderNews);
+document.getElementById("onlyOpen").addEventListener("change", renderNews);
+document.getElementById("newsClear").addEventListener("click", function() {
+  document.getElementById("newsSearch").value = "";
+  renderNews();
+});
+
 function openNews(idx) {
-  const it = newsCache[idx];
+  const it = newsView[idx];
   if (!it) return;
   const box = document.getElementById("modalBox");
   box.innerHTML = (it.cover_image ? '<img class="cover" src="' + it.cover_image + '">' : '')
