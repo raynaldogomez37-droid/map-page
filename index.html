@@ -229,12 +229,12 @@
   }
 
 /* ---------- 赛事与资讯搜索 ---------- */
-.news-search{display:flex;align-items:center;gap:10px;margin:0 0 8px}
+.news-search{display:flex;flex-direction:column;align-items:stretch;gap:8px;margin:0 0 8px}
 .ns-box{flex:1;display:flex;align-items:center;gap:8px;background:#fff;border:1.5px solid #D6DCE6;border-radius:12px;padding:8px 10px;color:#2563EB}
 .ns-box:focus-within{border-color:#2563EB;box-shadow:0 0 0 3px rgba(37,99,235,.12)}
 .ns-box input{flex:1;border:none;outline:none;font-size:14px;background:transparent;color:#222;min-width:0}
 .ns-clear{display:none;width:18px;height:18px;border-radius:9px;background:#BDBDBD;color:#fff;font-size:13px;line-height:18px;text-align:center;cursor:pointer}
-.ns-open{white-space:nowrap;font-size:13px;color:#555;display:flex;align-items:center;gap:4px;cursor:pointer}
+.ns-open{white-space:nowrap;font-size:13px;color:#555;display:flex;align-items:center;gap:6px;cursor:pointer;padding-left:2px;align-self:flex-start}
 .ns-count{font-size:12px;color:#888;margin:0 2px 8px;min-height:14px}
 .ns-count b{color:#2563EB}
   .nt{flex:1;min-width:0}
@@ -269,7 +269,7 @@ mark{background:#FFEB3B;color:inherit;border-radius:3px;padding:0 1px}
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line>
       </svg>
-      <input id="newsSearch" type="text" placeholder="搜索地区、项目、关键字，如：广州、广州比赛" />
+      <input id="newsSearch" type="text" placeholder="搜索地区、项目、关键字" />
       <span id="newsClear" class="ns-clear" title="清空">×</span>
     </div>
     <label class="ns-open"><input type="checkbox" id="onlyOpen"> 只看未结束</label>
